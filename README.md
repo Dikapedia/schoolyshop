@@ -1,6 +1,6 @@
 # Schooly Shop
 
-Toko belanja daring internal sekolah ( Smansa) untuk menjual produk kreatif warga sekolah — seragam, alat tulis, kerajinan, dan karya siswa. Semua data dimuat dari mock data lokal.
+Toko belanja daring internal sekolah (SMK Suka Maju) untuk menjual produk kreatif warga sekolah — seragam, alat tulis, kerajinan, dan karya siswa. Semua data dimuat dari mock data lokal.
 
 ---
 
