@@ -1,9 +1,7 @@
-import { Inter } from "next/font/google";
+import { inter } from "@/lib/fonts";
 import BrandPanel from "@/components/auth/BrandPanel";
 import { ShoppingBagIcon } from "@/components/icons";
 import { site } from "@/lib/site";
-
-const inter = Inter({ subsets: ["latin"], display: "swap" });
 
 export default function AuthLayout({
   children,
@@ -42,7 +40,7 @@ export default function AuthLayout({
         <footer className="text-center text-xs text-slate-400">
           {/* Tahun ditulis tetap sesuai desain. new Date() tidak boleh dipakai
               di sini karena proyek memakai cacheComponents. */}
-          {site.name} © 2025 {site.school}. Seluruh hak cipta dilindungi.
+          {site.name} © 2026 {site.school}. Seluruh hak cipta dilindungi.
         </footer>
       </div>
     </div>

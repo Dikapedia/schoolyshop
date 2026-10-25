@@ -97,8 +97,8 @@ const SEED: MockAccount[] = [
   {
     id: "user-1",
     name: "Nabila Azzahra",
-    email: "user@schoolyshop.test",
-    password: "User12345",
+    email: "user@gmail.test",
+    password: "12345",
     role: "user",
     active: true,
   },

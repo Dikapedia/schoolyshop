@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/auth/use-session";
 import { inter } from "@/lib/fonts";
+import { site } from "@/lib/site";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 
@@ -116,7 +117,7 @@ export default function BantuanPage() {
             <p className="mb-1 text-xs text-slate-500">Halo SMK!</p>
             <h1 className="mb-2 text-2xl font-bold">Butuh Bantuan?</h1>
             <p className="text-sm text-slate-600">
-              Tim Admin Koperasi Schooly Shop SMK Bandung siap mendampingi kebutuhan akademik, seragam, dan transaksi Anda.
+              Tim Admin Koperasi Schooly Shop {site.school} siap mendampingi kebutuhan akademik, seragam, dan transaksi Anda.
             </p>
           </div>
 
@@ -196,7 +197,7 @@ export default function BantuanPage() {
               <div>
                 <p className="font-semibold text-amber-900">Catatan Operasional</p>
                 <p className="mt-1 text-sm text-amber-800">
-                  Jika layanan WhatsApp sedang offline atau pesan dikirim di luar jam kerja (08:00-16:00 WIB), pesan Anda akan otomatis tercatat dan dijawab pada hari sekolah berikutnya oleh pengurus Koperasi Siswa Mandiri SMK Bandung.
+                  Jika layanan WhatsApp sedang offline atau pesan dikirim di luar jam kerja (08:00-16:00 WIB), pesan Anda akan otomatis tercatat dan dijawab pada hari sekolah berikutnya oleh pengurus Koperasi Siswa Mandiri {site.school}.
                 </p>
               </div>
               </div>

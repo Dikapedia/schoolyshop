@@ -1,4 +1,5 @@
 import { useMemo, useSyncExternalStore } from "react";
+import { SESSION_EVENT, readSessionRaw } from "@/lib/auth/session";
 
 // Keranjang sederhana di browser (localStorage) agar tombol
 // "Tambah ke Keranjang" dan angka di header berfungsi.
@@ -64,24 +65,12 @@ export function addToCartWithAuth(productId: string, qty = 1): boolean {
   return true;
 }
 
-function readSessionRaw(): string {
-  try {
-    return (
-      window.localStorage.getItem("schooly.session") ??
-      window.sessionStorage.getItem("schooly.session") ??
-      ""
-    );
-  } catch {
-    return "";
-  }
-}
-
 function sessionSubscribe(onChange: () => void): () => void {
   window.addEventListener("storage", onChange);
-  window.addEventListener("schooly:session", onChange);
+  window.addEventListener(SESSION_EVENT, onChange);
   return () => {
     window.removeEventListener("storage", onChange);
-    window.removeEventListener("schooly:session", onChange);
+    window.removeEventListener(SESSION_EVENT, onChange);
   };
 }
 

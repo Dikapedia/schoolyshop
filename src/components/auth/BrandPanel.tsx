@@ -36,14 +36,13 @@ export default function BrandPanel() {
 
       <div className="relative z-10 flex flex-col items-center py-8 text-center">
         <div className="rounded-2xl border border-white/25 bg-white/10 p-1.5 shadow-[0_0_60px_rgba(147,197,253,0.35)]">
-          <Image
-            src="/images/auth-illustration.png"
-            alt="Ilustrasi siswa menjual produk kreatif di pasar sekolah"
-            width={420}
-            height={260}
-            priority
-            className="h-auto w-full max-w-[440px] rounded-xl"
-          />
+<Image
+          src="/images/auth-illustration.png"
+          alt="Ilustrasi siswa menjual produk kreatif di pasar sekolah"
+          fill
+          priority
+          className="object-cover rounded-xl"
+        />
         </div>
         <h2 className="mt-8 text-2xl font-bold">
           Belanja Produk Kreatif Warga {site.school}

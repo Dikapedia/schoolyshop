@@ -25,7 +25,7 @@ export default function LoginPage({
         </p>
       </header>
 
-      <Suspense fallback={<LoginForm nextPath="/" justRegistered={false} />}>
+      <Suspense fallback={<div className="py-12 text-center text-sm text-slate-500">Memuat…</div>}>
         <LoginFormWithParams searchParams={searchParams} />
       </Suspense>
     </>

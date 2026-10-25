@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/auth/use-session";
 import { saveSession, clearSession } from "@/lib/auth/session";
@@ -8,23 +8,44 @@ import { inter } from "@/lib/fonts";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 
+type StoredUser = {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  role: string;
+  active: boolean;
+};
+
 export default function ProfilPage() {
   const session = useSession();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const sessionRef = useRef(session);
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+
+  if (!mounted || !session) return null;
   const [name, setName] = useState(session?.name ?? "");
   const [email, setEmail] = useState(session?.email ?? "");
   // Persist name & email locally
-  React.useEffect(() => {
-    if (!session) return;
-    const updated = { ...session, name, email };
+  useEffect(() => {
+    if (!sessionRef.current) return;
+    const updated = { ...sessionRef.current, name, email };
     saveSession(updated, true);
   }, [name, email]);
   const [phone, setPhone] = useState<string[]>([]);
   // Persist phone digits only
   React.useEffect(() => {
+    if (!mounted || !session) return;
     try {
       window.localStorage.setItem("schooly.phone", phone.join(""));
     } catch {}
-  }, [phone]);
+  }, [phone, mounted, session]);
   // Display phone as +62 followed by digits, limited to 10 digits
   const displayPhone = "+62" + phone.join("");
   const [passwordLama, setPasswordLama] = useState("");
@@ -169,15 +190,15 @@ export default function ProfilPage() {
                     </svg>
                     Alamat Pengiriman
                   </Link>
-                  <a
-                    href="#riwayat"
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V7a2 2 0 012-2h6a2 2 0 012 2v2M7 7a2 2 0 012-2h6a2 2 0 012 2" />
-                    </svg>
-                    Riwayat Pesanan
-                  </a>
+                    <Link
+                      href="/pesanan"
+                      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V7a2 2 0 012-2h6a2 2 0 012 2v2M7 7a2 2 0 012-2h6a2 2 0 012 2z" />
+                      </svg>
+                      Riwayat Pesanan
+                    </Link>
                   <a
                     href="/profil/bantuan"
                     className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
@@ -205,7 +226,7 @@ export default function ProfilPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     <div>
-                      <p className="text-xs font-medium text-slate-700">T.A. 2026/2027 Genap</p>
+                      <p className="text-xs font-medium text-slate-700">T.A. 2026/2027</p>
                       <p className="text-xs text-slate-500">Aktif s/d Juni 2027</p>
                     </div>
                   </div>
@@ -307,7 +328,7 @@ export default function ProfilPage() {
                           </svg>
                           <input
                             type="text"
-                            value="12 Juli 2027 (Tahun Ajaran Baru)"
+                            value="12 Juli 2026 (Tahun Ajaran Baru)"
                             disabled
                             className="w-full rounded-lg border border-slate-300 bg-slate-50 pl-9 pr-3 py-2 text-sm text-slate-500 cursor-not-allowed"
                           />
@@ -432,14 +453,14 @@ export default function ProfilPage() {
                           return;
                         }
                         // Verify old password matches current user
-                        const users = JSON.parse(localStorage.getItem("schooly.mock.users") || "[]");
-                        const user = users.find((u: any) => u.id === session?.id);
+                        const users: StoredUser[] = JSON.parse(localStorage.getItem("schooly.mock.users") || "[]");
+                        const user = users.find((u) => u.id === session?.id);
                         if (!user || user.password !== passwordLama) {
                           setError("Kata sandi lama tidak sesuai.");
                           return;
                         }
                         // Update password for current user in mock storage
-                        const updated = users.map((u: any) =>
+                        const updated = users.map((u) =>
                           u.id === session?.id ? { ...u, password: passwordBaru } : u
                         );
                         localStorage.setItem("schooly.mock.users", JSON.stringify(updated));

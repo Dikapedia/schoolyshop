@@ -9,6 +9,7 @@ import { formatRupiah } from "@/lib/format";
 import { removeFromCart, updateCartQuantity, useCart } from "@/lib/shop/cart";
 import { getProductById, type Product } from "@/lib/shop/products";
 import { useSession } from "@/lib/auth/use-session";
+import { site } from "@/lib/site";
 
 function sellerShort(label: string): string {
   return label.split("(")[0].trim();
@@ -258,7 +259,7 @@ export default function CartView() {
             <p className="flex items-center gap-2 text-xs text-emerald-900">
               <span aria-hidden className="grid h-6 w-6 place-items-center rounded-full bg-emerald-500 text-xs text-white">✓</span>
               <span>
-                <strong className="font-bold">100% Produk Internal Warga SMK Bandung</strong>
+                <strong className="font-bold">100% Produk Internal Warga {site.school}</strong>
                 <span className="block font-normal text-emerald-800">
                   Bebas biaya antar jemput untuk pengambilan langsung di Koperasi Siswa & Gazebo OSIS.
                 </span>
@@ -333,7 +334,7 @@ export default function CartView() {
           <button
             type="button"
             disabled={selected.length === 0}
-            onClick={() => router.push(`/login?next=/keranjang`)}
+            onClick={() => router.push(`/checkout`)}
             className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-40"
           >
             🛒 Lanjut ke Pembayaran ({selectedCount})
@@ -343,7 +344,7 @@ export default function CartView() {
             🛡 Verifikasi pembayaran resmi terintegrasi Kampus
           </p>
           <p className="mt-2 rounded-xl bg-blue-50/70 px-3 py-2.5 text-[11px] leading-relaxed text-slate-600">
-            📍 Barang diserahkan melalui loket Koperasi Sekolah SMK Bandung atau diantar antar-kelas
+            📍 Barang diserahkan melalui loket Koperasi Sekolah {site.school} atau diantar antar-kelas
             saat jam istirahat.
           </p>
         </aside>

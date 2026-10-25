@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/auth/use-session";
+import { useRouter } from "next/navigation";
 import { inter } from "@/lib/fonts";
+import { site } from "@/lib/site";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 
@@ -19,48 +21,30 @@ type Address = {
   isPickupHub?: boolean;
 };
 
-const STORAGE_KEY = "schooly.addresses";
-const loadStoredAddresses = () => {
-  if (typeof window === "undefined") return [];
+// Helper types & functions for per‑user address storage
+type StoredAddresses = Record<string, Address[]>;
+
+function loadUserAddresses(sessionId: string | null): Address[] {
+  if (!sessionId) return [];
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) as Address[] : [];
-  } catch { return [];
+    const raw = window.localStorage.getItem("schooly.addresses");
+    const all: StoredAddresses = raw ? JSON.parse(raw) : {};
+    return all[sessionId] ?? [];
+  } catch {
+    return [];
   }
-};
-const INITIAL_ADDRESSES: Address[] = loadStoredAddresses().length ? loadStoredAddresses() : [
-  {
-    id: "1",
-    name: "Nabila Putri Ramadhani",
-    phone: "(+62) 812-3456-7890",
-    address: "Jl. Citrum No. 15, RT 03/RW 05, Kel. Citrum, Kec. Bandung Wetan, Kota Bandung, Jawa Barat",
-    postalCode: "40115",
-    note: "Pagar hitam depan pos satpam perumahan",
-    badges: ["Rumah", "Alamat Utama"],
-    isPrimary: true,
-  },
-  {
-    id: "2",
-    name: "Nabila Putri (Titik Koperasi Sekolah)",
-    phone: "(+62) 812-3456-7890",
-    address: "Gedung B Koperasi Siswa SMK Bandung, Jl. Ir. H. Juanda No. 93, Kel. Tamansari, Kec. Bandung Wetan, Kota Bandung",
-    postalCode: "40132",
-    note: "Titik di Loket Koperasi Siswa Lt. 1 Gedung B. Waktu ambil: Istirahat 1 dan Pulang Sekolah.",
-    badges: ["Pick-Up Hub", "Bebas Ongkir Pengiriman"],
-    isPrimary: false,
-    isPickupHub: true,
-  },
-  {
-    id: "3",
-    name: "Drs. H. M. Ramadhani (Wali Siswa)",
-    phone: "(+62) 811-2233-4411",
-    address: "Komplek Dago Asri Blok C-12, Kel. Dago, Kec. Coblong, Kota Bandung, Jawa Barat",
-    postalCode: "40135",
-    note: "Rumah pagar putih samping Mushola Al-Hidayah",
-    badges: ["Rumah Wali"],
-    isPrimary: false,
-  },
-];
+}
+
+function saveUserAddresses(sessionId: string, addresses: Address[]) {
+  try {
+    const raw = window.localStorage.getItem("schooly.addresses");
+    const all: StoredAddresses = raw ? JSON.parse(raw) : {};
+    all[sessionId] = addresses;
+    window.localStorage.setItem("schooly.addresses", JSON.stringify(all));
+  } catch {
+    // ignore storage errors
+  }
+}
 
 const emptyForm = {
   name: "",
@@ -72,35 +56,52 @@ const emptyForm = {
 
 export default function AlamatPengirimanPage() {
   const session = useSession();
-  const [addresses, setAddresses] = useState<Address[]>(INITIAL_ADDRESSES);
+  const router = useRouter();
+  const [mounted, setMounted] = useState(false);
 
-  // Persist addresses to localStorage
-  React.useEffect(() => {
-    try {
-      window.localStorage.setItem("schooly.addresses", JSON.stringify(addresses));
-    } catch {}
-  }, [addresses]);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!session && mounted) {
+      router.replace("/login?next=" + encodeURIComponent("/profil/alamat"));
+    }
+  }, [session, router, mounted]);
+
+  const [addresses, setAddresses] = useState<Address[]>(() =>
+    session && mounted ? loadUserAddresses(session.id) : []);
+
+  // Populate demo address if none
+  useEffect(() => {
+    if (session && addresses.length === 0) {
+      const demo: Address = {
+        id: `address-demo-${Date.now()}`,
+        name: "Demo Alamat",
+        phone: "+62 812-0000-0000",
+        address: "Jalan Demo No.1, Kecamatan Demo, Kota Demo",
+        postalCode: "12345",
+        note: "Demo address for checkout",
+        badges: ["Rumah"],
+        isPrimary: true,
+      };
+      setAddresses([demo]);
+    }
+  }, [session, addresses.length]);
+
+  // Persist addresses per‑user
+  useEffect(() => {
+    if (session) {
+      saveUserAddresses(session.id, addresses);
+    }
+  }, [addresses, session]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState("");
 
   if (!session) {
-    return (
-      <div className={`${inter.className} flex min-h-screen flex-col bg-slate-50 text-slate-900`}>
-        <SiteHeader />
-        <main className="flex-1 px-4 py-12">
-          <div className="mx-auto max-w-2xl text-center">
-            <h1 className="mb-4 text-2xl font-bold">Akses Ditolak</h1>
-            <p className="mb-6 text-slate-600">Anda harus login terlebih dahulu untuk mengakses halaman ini.</p>
-            <Link href="/login" className="inline-block rounded-lg bg-blue-600 px-6 py-2 font-semibold text-white hover:bg-blue-700">
-              Masuk
-            </Link>
-          </div>
-        </main>
-        <SiteFooter />
-      </div>
-    );
+    return null;
   }
 
   function openAddForm() {
@@ -206,7 +207,7 @@ export default function AlamatPengirimanPage() {
             <div>
               <h1 className="text-2xl font-bold">Kelola Alamat Pengiriman</h1>
               <p className="mt-1 text-sm text-slate-600">
-                Kelola alamat pengiriman paket domisili dan titik penjemputan resmi loket sekolah SMK Bandung.
+                Kelola alamat pengiriman paket domisili dan titik penjemputan resmi loket sekolah {site.school}.
               </p>
             </div>
             <button
@@ -227,7 +228,7 @@ export default function AlamatPengirimanPage() {
                 <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span>
-                <strong>Integrasi Biteship API aktif:</strong> Alamat terverifikasi otomatis hingga tingkat kecamatan dan kode pos kelurahan di Kota Bandung &amp; sekitarnya.
+                <strong>Integrasi Biteship API aktif:</strong> Alamat terverifikasi otomatis hingga tingkat kecamatan dan kode pos kelurahan di Kota Semarang &amp; sekitarnya.
               </span>
             </div>
             <span className="hidden shrink-0 items-center gap-1 text-xs font-medium text-green-600 sm:flex">
