@@ -3,7 +3,6 @@ import Hero from "@/components/shop/Hero";
 import ProductSection from "@/components/shop/ProductSection";
 import SiteFooter from "@/components/shop/SiteFooter";
 import SiteHeader from "@/components/shop/SiteHeader";
-import { inter } from "@/lib/fonts";
 
 export const metadata: Metadata = {
   title: "Schooly Shop | Produk Kreatif Warga Sekolah",

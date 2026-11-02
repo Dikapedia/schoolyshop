@@ -34,7 +34,7 @@ const DETAIL_OVERRIDES: Record<string, Partial<AdminReturnDetail>> = {
     verified: true,
     orderId: "ORD-001",
     paymentMethod: "Virtual Account Mandiri / (Lunas)",
-    product: "Kemeja Batik Siswa Lengan Pendek SMA (Size L)",
+    product: "Kemeja Batik Siswa Lengan Pendek SMK (Size L)",
     price: "Rp120.000",
     size: "Size L",
     quantity: 1,

@@ -10,6 +10,7 @@ export type SellerSalesRow = {
   total: number;
   refund: number;
   net: number;
+  date: string;
   initials: string;
 };
 
@@ -36,6 +37,7 @@ export const SALES_REPORT: SellerSalesRow[] = [
     total: 1440000,
     refund: 120000,
     net: 1320000,
+    date: "2026-10-05",
     initials: "IS",
   },
   {
@@ -48,6 +50,7 @@ export const SALES_REPORT: SellerSalesRow[] = [
     total: 520000,
     refund: 0,
     net: 520000,
+    date: "2026-10-09",
     initials: "IN",
   },
   {
@@ -60,6 +63,7 @@ export const SALES_REPORT: SellerSalesRow[] = [
     total: 665000,
     refund: 0,
     net: 665000,
+    date: "2026-10-14",
     initials: "AL",
   },
   {
@@ -72,6 +76,7 @@ export const SALES_REPORT: SellerSalesRow[] = [
     total: 495000,
     refund: 0,
     net: 495000,
+    date: "2026-10-21",
     initials: "BU",
   },
   {
@@ -84,6 +89,7 @@ export const SALES_REPORT: SellerSalesRow[] = [
     total: 330000,
     refund: 0,
     net: 330000,
+    date: "2026-10-27",
     initials: "NO",
   },
 ];
@@ -137,7 +143,7 @@ export type SellerReportDetail = {
 const ISMI_PRODUCTS: SellerProductRow[] = [
   {
     id: 1,
-    name: "Kemeja Batik Siswa Lengan Pendek SMA",
+    name: "Kemeja Batik Siswa Lengan Pendek SMK",
     sku: "SCH-BTK-006L",
     category: "Pakaian Seragam",
     unitPrice: 120000,

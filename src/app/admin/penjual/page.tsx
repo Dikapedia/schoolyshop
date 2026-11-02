@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const summaryCards = [
   {
@@ -46,7 +46,23 @@ const summaryCards = [
   },
 ];
 
-const initialSellers = [
+type Seller = {
+  id: number;
+  initials: string;
+  name: string;
+  business: string;
+  type: string;
+  typeClass: string;
+  kk: string;
+  address: string;
+  whatsapp?: string;
+  avatarClass: string;
+};
+
+const SELLERS_STORAGE_KEY = "schooly.admin.sellers";
+const SELLERS_PAGE_SIZE = 4;
+
+const initialSellers: Seller[] = [
   {
     id: 1,
     initials: "IS",
@@ -55,6 +71,7 @@ const initialSellers = [
     type: "Siswa (Kelas XI-RPL)",
     typeClass: "bg-blue-50 text-blue-700",
     kk: "320104580290****",
+    address: "Ruang Koperasi SMK Suka Maju, Lantai 1",
     avatarClass: "bg-blue-50 text-blue-600",
   },
   {
@@ -65,6 +82,7 @@ const initialSellers = [
     type: "Siswa (Kelas XII-Tata Busana)",
     typeClass: "bg-blue-50 text-blue-700",
     kk: "320104620381****",
+    address: "Lab Tata Busana, Gedung B",
     avatarClass: "bg-blue-50 text-blue-600",
   },
   {
@@ -75,6 +93,7 @@ const initialSellers = [
     type: "Siswa (Kelas X-DKV)",
     typeClass: "bg-blue-50 text-blue-700",
     kk: "320104710103****",
+    address: "Lab DKV, Gedung C",
     avatarClass: "bg-blue-50 text-blue-600",
   },
   {
@@ -85,6 +104,7 @@ const initialSellers = [
     type: "Guru (Seni Budaya)",
     typeClass: "bg-violet-50 text-violet-700",
     kk: "320108020405****",
+    address: "Ruang Guru Seni Budaya, Gedung A",
     avatarClass: "bg-violet-50 text-violet-600",
   },
   {
@@ -95,15 +115,9 @@ const initialSellers = [
     type: "Karyawan / TU",
     typeClass: "bg-amber-50 text-amber-700",
     kk: "320101150778****",
+    address: "Ruang Tata Usaha, Gedung A",
     avatarClass: "bg-amber-50 text-amber-600",
   },
-];
-
-const tabs = [
-  { label: "Semua", count: 5 },
-  { label: "Siswa", count: 3 },
-  { label: "Guru", count: 1 },
-  { label: "Karyawan", count: 1 },
 ];
 
 export default function PenjualSupplierPage() {
@@ -111,13 +125,63 @@ export default function PenjualSupplierPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [sellers, setSellers] = useState(initialSellers);
   const [selected, setSelected] = useState(initialSellers[0]);
-  const [editForm, setEditForm] = useState({ name: "", business: "" });
+  const [editForm, setEditForm] = useState({ name: "", business: "", kk: "", whatsapp: "", address: "" });
+  const [addForm, setAddForm] = useState({ name: "", business: "", kk: "", whatsapp: "", address: "" });
   const [activeTab, setActiveTab] = useState("Semua");
   const [jenisPenjual, setJenisPenjual] = useState<"Siswa" | "Guru" | "Karyawan">("Siswa");
+  const [addJenis, setAddJenis] = useState<"Siswa" | "Guru" | "Karyawan">("Siswa");
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(SELLERS_STORAGE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as Seller[];
+        if (Array.isArray(saved) && saved.length > 0) {
+          setSellers(saved); // eslint-disable-line react-hooks/set-state-in-effect
+          setSelected(saved[0]);
+        }
+      }
+    } catch {
+      return;
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SELLERS_STORAGE_KEY, JSON.stringify(sellers));
+    } catch {
+      return;
+    }
+  }, [sellers]);
+
+  const filteredSellers = sellers.filter((seller) => {
+    if (activeTab === "Semua") return true;
+    return seller.type.toLowerCase().includes(activeTab.toLowerCase());
+  });
+  const totalPages = Math.max(1, Math.ceil(filteredSellers.length / SELLERS_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedSellers = filteredSellers.slice(
+    (currentPage - 1) * SELLERS_PAGE_SIZE,
+    currentPage * SELLERS_PAGE_SIZE
+  );
+
+  const tabs = [
+    { label: "Semua", count: sellers.length },
+    { label: "Siswa", count: sellers.filter((seller) => seller.type.includes("Siswa")).length },
+    { label: "Guru", count: sellers.filter((seller) => seller.type.includes("Guru")).length },
+    { label: "Karyawan", count: sellers.filter((seller) => seller.type.includes("Karyawan")).length },
+  ];
 
   const openEdit = (seller: (typeof sellers)[0]) => {
     setSelected(seller);
-    setEditForm({ name: seller.name, business: seller.business });
+    setEditForm({
+      name: seller.name,
+      business: seller.business,
+      kk: seller.kk,
+      whatsapp: seller.whatsapp ?? "",
+      address: seller.address,
+    });
     if (seller.type.toLowerCase().includes("guru")) setJenisPenjual("Guru");
     else if (seller.type.toLowerCase().includes("karyawan")) setJenisPenjual("Karyawan");
     else setJenisPenjual("Siswa");
@@ -134,10 +198,13 @@ export default function PenjualSupplierPage() {
       .map((w) => w[0]?.toUpperCase() || "")
       .join("") || selected.initials;
 
-    let updated: any = {
+    let updated: Partial<Seller> = {
       name: newName,
       business: newBusiness,
       initials,
+      kk: editForm.kk.trim() || selected.kk,
+      whatsapp: editForm.whatsapp.trim() || selected.whatsapp || "",
+      address: editForm.address.trim() || selected.address,
     };
 
     if (jenisPenjual === "Siswa") {
@@ -169,20 +236,53 @@ export default function PenjualSupplierPage() {
         return { ...seller, ...updated };
       })
     );
-    setSelected((prev: any) => ({ ...prev, ...updated }));
+    setSelected((prev) => ({ ...prev, ...updated }));
     setEditOpen(false);
   };
 
-  const tabs = [
-    { label: "Semua", count: 5 },
-    { label: "Siswa", count: 3 },
-    { label: "Guru", count: 1 },
-    { label: "Karyawan", count: 1 },
-  ];
+  const handleAddSeller = () => {
+    const name = addForm.name.trim();
+    if (!name) return;
+    const initials =
+      name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((word) => word[0]?.toUpperCase() || "")
+        .join("") || "PS";
+    const id = sellers.reduce((max, seller) => Math.max(max, seller.id), 0) + 1;
+    const newSeller: Seller = {
+      id,
+      initials,
+      name,
+      business: addForm.business.trim() || `Usaha ${name}`,
+      type: "Siswa (Kelas XI-RPL)",
+      typeClass: "bg-blue-50 text-blue-700",
+      kk: addForm.kk.trim() || "320101010101****",
+      whatsapp: addForm.whatsapp.trim(),
+      address: addForm.address.trim() || "Belum diisi",
+      avatarClass: "bg-blue-50 text-blue-600",
+    };
+    if (addJenis === "Guru") {
+      newSeller.type = "Guru (Seni Budaya)";
+      newSeller.typeClass = "bg-violet-50 text-violet-700";
+      newSeller.avatarClass = "bg-violet-50 text-violet-600";
+    } else if (addJenis === "Karyawan") {
+      newSeller.type = "Karyawan / TU";
+      newSeller.typeClass = "bg-amber-50 text-amber-700";
+      newSeller.avatarClass = "bg-amber-50 text-amber-600";
+    }
+    setSellers((prev) => [newSeller, ...prev]);
+    setAddForm({ name: "", business: "", kk: "", whatsapp: "", address: "" });
+    setAddJenis("Siswa");
+    setAddOpen(false);
+    setActiveTab("Semua");
+    setPage(1);
+  };
 
   return (
     <div className="relative">
-      <div className={addOpen ? "" : ""}>
+      <div>
         <div className="mb-6">
           <div className="text-sm text-slate-400">Produk & Supplier &gt;</div>
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mt-1">
@@ -223,7 +323,10 @@ export default function PenjualSupplierPage() {
               <button
                 key={tab.label}
                 type="button"
-                onClick={() => setActiveTab(tab.label)}
+                onClick={() => {
+                  setActiveTab(tab.label);
+                  setPage(1);
+                }}
                 className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                   activeTab === tab.label
                     ? "bg-blue-50 text-blue-700"
@@ -248,7 +351,7 @@ export default function PenjualSupplierPage() {
                 </tr>
               </thead>
               <tbody>
-                {sellers.map((seller) => (
+                {pagedSellers.map((seller) => (
                   <tr key={seller.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/40">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
@@ -280,16 +383,60 @@ export default function PenjualSupplierPage() {
                     </td>
                   </tr>
                 ))}
+                {pagedSellers.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="py-8 px-6 text-center text-sm text-slate-500">
+                      Belum ada penjual pada kategori ini.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
 
           <div className="flex items-center justify-between px-6 py-4">
-            <p className="text-sm text-slate-500">Menampilkan 5 dari 5 supplier</p>
+            <p className="text-sm text-slate-500">
+              Menampilkan {pagedSellers.length} dari {filteredSellers.length} supplier
+            </p>
             <div className="flex items-center gap-2">
-              <button className="px-3 py-1.5 text-sm text-slate-400 border border-slate-200 rounded-lg cursor-not-allowed">Sebelumnya</button>
-              <button className="px-3 py-1.5 text-sm text-white bg-blue-600 rounded-lg">1</button>
-              <button className="px-3 py-1.5 text-sm text-slate-400 border border-slate-200 rounded-lg cursor-not-allowed">Selanjutnya</button>
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className={`px-3 py-1.5 text-sm border rounded-lg ${
+                    currentPage === 1
+                      ? "text-slate-300 border-slate-200 cursor-not-allowed"
+                      : "text-slate-700 border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  ‹
+                </button>
+              {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                <button
+                  key={pageNumber}
+                  type="button"
+                  onClick={() => setPage(pageNumber)}
+                  className={`px-3 py-1.5 text-sm rounded-lg ${
+                    currentPage === pageNumber
+                      ? "text-white bg-blue-600"
+                      : "text-slate-700 border border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  {pageNumber}
+                </button>
+              ))}
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className={`px-3 py-1.5 text-sm border rounded-lg ${
+                    currentPage === totalPages
+                      ? "text-slate-300 border-slate-200 cursor-not-allowed"
+                      : "text-slate-700 border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  ›
+                </button>
             </div>
           </div>
         </div>
@@ -323,7 +470,11 @@ export default function PenjualSupplierPage() {
             <div className="flex-1 overflow-y-auto p-6 space-y-5">
               <div>
                 <label className="text-sm font-medium text-slate-700">Nomor KK (Kartu Keluarga) <span className="text-red-500">*</span></label>
-                <input value={selected.kk.replace("****", "0000")} readOnly className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-slate-50 text-slate-500 focus:outline-none" />
+                <input
+                  value={editForm.kk}
+                  onChange={(event) => setEditForm((prev) => ({ ...prev, kk: event.target.value }))}
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
               <div>
                 <div className="flex items-center justify-between">
@@ -336,7 +487,20 @@ export default function PenjualSupplierPage() {
                     16 Digit Terverifikasi
                   </span>
                 </div>
-                <input defaultValue={selected.kk} className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <div className="mt-1 flex">
+                  <div className="flex items-center gap-2 px-3 rounded-l-lg border border-r-0 border-slate-200 bg-slate-50 text-slate-600 text-sm">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2" />
+                      <path d="M9 12L11 14L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    16 Digit Terverifikasi
+                  </div>
+                  <input
+                    value={editForm.kk}
+                    onChange={(event) => setEditForm((prev) => ({ ...prev, kk: event.target.value }))}
+                    className="flex-1 px-3 py-2 rounded-r-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
                 <p className="text-xs text-slate-500 mt-1">Wajib 16 digit sesuai identitas resmi</p>
               </div>
 
@@ -416,14 +580,24 @@ export default function PenjualSupplierPage() {
                     </svg>
                     +62
                   </div>
-                  <input placeholder="812-xxxx-xxxx" className="flex-1 px-3 py-2 rounded-r-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <input
+                    value={editForm.whatsapp}
+                    onChange={(event) => setEditForm((prev) => ({ ...prev, whatsapp: event.target.value }))}
+                    placeholder="812-xxxx-xxxx"
+                    className="flex-1 px-3 py-2 rounded-r-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
                 <p className="text-xs text-slate-500 mt-1">Digunakan untuk konfirmasi pesanan siswa dan notifikasi pencairan dana.</p>
               </div>
 
               <div>
                 <label className="text-sm font-medium text-slate-700">Alamat Lengkap / Lokasi Operasional</label>
-                <textarea defaultValue={selected.address || ""} rows={4} className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                <textarea
+                  value={editForm.address}
+                  onChange={(event) => setEditForm((prev) => ({ ...prev, address: event.target.value }))}
+                  rows={4}
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
                 <div className="flex items-center justify-between mt-1">
                   <p className="text-xs text-slate-500">Sertakan gedung/ruang laboratorium jika berada di area sekolah.</p>
                   <p className="text-xs text-slate-400">75/200</p>
@@ -455,6 +629,116 @@ export default function PenjualSupplierPage() {
                   <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
                 </svg>
                 Simpan Perubahan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {addOpen && (
+        <div className="fixed inset-0 z-[100000] flex justify-end">
+          <div className="absolute inset-0 bg-slate-900/40" onClick={() => setAddOpen(false)} />
+          <div className="relative w-full max-w-lg h-full bg-white shadow-2xl flex flex-col">
+            <div className="flex items-start justify-between p-6 border-b border-slate-200">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 5V19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Tambah Penjual/Supplier</h2>
+                  <p className="text-sm text-slate-600">Daftarkan penjual baru ke dalam sistem Schooly Shop.</p>
+                </div>
+              </div>
+              <button onClick={() => setAddOpen(false)} className="text-slate-400 hover:text-slate-600" aria-label="Tutup">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              <div>
+                <label className="text-sm font-medium text-slate-700">Nama Lengkap <span className="text-red-500">*</span></label>
+                <input
+                  value={addForm.name}
+                  onChange={(event) => setAddForm((prev) => ({ ...prev, name: event.target.value }))}
+                  placeholder="Contoh: Aisyah Putri"
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Jenis Penjual <span className="text-red-500">*</span></label>
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  <button type="button" onClick={() => setAddJenis("Siswa")} className={`p-3 rounded-lg border text-xs font-medium transition ${addJenis === "Siswa" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}>Siswa</button>
+                  <button type="button" onClick={() => setAddJenis("Guru")} className={`p-3 rounded-lg border text-xs font-medium transition ${addJenis === "Guru" ? "border-violet-500 bg-violet-50 text-violet-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}>Guru</button>
+                  <button type="button" onClick={() => setAddJenis("Karyawan")} className={`p-3 rounded-lg border text-xs font-medium transition ${addJenis === "Karyawan" ? "border-amber-500 bg-amber-50 text-amber-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}>Karyawan</button>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Nama Usaha / Toko</label>
+                <input
+                  value={addForm.business}
+                  onChange={(event) => setAddForm((prev) => ({ ...prev, business: event.target.value }))}
+                  placeholder="Contoh: Kopi Aisyah"
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Nomor KK (Kartu Keluarga)</label>
+                <input
+                  value={addForm.kk}
+                  onChange={(event) => setAddForm((prev) => ({ ...prev, kk: event.target.value }))}
+                  placeholder="16 digit, kosongkan bila belum"
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Nomor WhatsApp</label>
+                <div className="mt-1 flex">
+                  <div className="flex items-center gap-2 px-3 rounded-l-lg border border-r-0 border-slate-200 bg-slate-50 text-slate-600 text-sm">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-emerald-600">
+                      <path d="M21 11.5C21.0034 12.8199 20.6951 14.1219 20.4 15.1C19.9444 16.8267 19.0807 18.4272 7.81987 19.647C6.57099 19.9988 5.24953 20.1758 3.92365 20.1701C2.59777 20.1643 1.28685 19.9762 0.0449219 19.6099L0 19.5L0.0449219 19.6099C1.28685 19.9762 2.59777 20.1643 3.92365 20.1701C5.24953 20.1758 6.57099 19.9988 7.81987 19.647C19.0807 18.4272 19.9444 16.8267 20.4 15.1C20.6951 14.1219 21.0034 12.8199 21 11.5C21 6.5 16.5 3 11 3C6.5 3 3 6.5 3 11.5C3 13.8 4.5 15.5 4.5 15.5L3 21L9.5 19.5C10.4095 19.6949 11.2156 20.7088 11 11.5C11.3 6.5 16.5 3 21 11.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    +62
+                  </div>
+                  <input
+                    value={addForm.whatsapp}
+                    onChange={(event) => setAddForm((prev) => ({ ...prev, whatsapp: event.target.value }))}
+                    placeholder="812-xxxx-xxxx"
+                    className="flex-1 px-3 py-2 rounded-r-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Digunakan untuk konfirmasi pesanan siswa dan notifikasi pencairan dana.</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Alamat Lengkap / Lokasi Operasional</label>
+                <textarea
+                  value={addForm.address}
+                  onChange={(event) => setAddForm((prev) => ({ ...prev, address: event.target.value }))}
+                  rows={3}
+                  placeholder="Sertakan gedung/ruang laboratorium bila di area sekolah"
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 p-6 border-t border-slate-200">
+              <button type="button" onClick={() => setAddOpen(false)} className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50">Batal</button>
+              <button
+                type="button"
+                onClick={handleAddSeller}
+                disabled={!addForm.name.trim()}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold ${
+                  addForm.name.trim()
+                    ? "bg-blue-600 text-white hover:bg-blue-700"
+                    : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                }`}
+              >
+                Simpan Penjual
               </button>
             </div>
           </div>

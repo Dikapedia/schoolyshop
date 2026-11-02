@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/auth/use-session";
 import { saveSession, clearSession } from "@/lib/auth/session";
-import { inter } from "@/lib/fonts";
+
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 
@@ -29,25 +29,11 @@ export default function ProfilPage() {
     sessionRef.current = session;
   }, [session]);
 
-  if (!mounted || !session) return null;
-  const [name, setName] = useState(session?.name ?? "");
-  const [email, setEmail] = useState(session?.email ?? "");
-  // Persist name & email locally
-  useEffect(() => {
-    if (!sessionRef.current) return;
-    const updated = { ...sessionRef.current, name, email };
-    saveSession(updated, true);
-  }, [name, email]);
+  if (!mounted) return null;
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState<string[]>([]);
-  // Persist phone digits only
-  React.useEffect(() => {
-    if (!mounted || !session) return;
-    try {
-      window.localStorage.setItem("schooly.phone", phone.join(""));
-    } catch {}
-  }, [phone, mounted, session]);
-  // Display phone as +62 followed by digits, limited to 10 digits
-  const displayPhone = "+62" + phone.join("");
   const [passwordLama, setPasswordLama] = useState("");
   const [passwordBaru, setPasswordBaru] = useState("");
   const [konfirmasiPassword, setKonfirmasiPassword] = useState("");
@@ -55,9 +41,32 @@ export default function ProfilPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (initializedRef.current || !session) return;
+    initializedRef.current = true;
+    setName(session.name);
+    setEmail(session.email);
+  }, [session]);
+
+  useEffect(() => {
+    if (!initializedRef.current || !sessionRef.current) return;
+    const updated = { ...sessionRef.current, name, email };
+    saveSession(updated, true);
+  }, [name, email]);
+
+  useEffect(() => {
+    if (!mounted || !session) return;
+    try {
+      window.localStorage.setItem("schooly.phone", phone.join(""));
+    } catch {}
+  }, [phone, mounted, session]);
+
+  const displayPhone = "+62" + phone.join("");
+
   if (!session) {
     return (
-      <div className={`${inter.className} flex min-h-screen flex-col bg-slate-50 text-slate-900`}>
+      <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900">
         <SiteHeader />
         <main className="flex-1 px-4 py-12">
           <div className="mx-auto max-w-2xl text-center">
@@ -126,7 +135,7 @@ export default function ProfilPage() {
   }
 
   return (
-    <div className={`${inter.className} flex min-h-screen flex-col bg-slate-50 text-slate-900`}>
+    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900">
       <SiteHeader />
 
       <main className="flex-1">

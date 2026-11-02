@@ -76,13 +76,30 @@ function SalesStatIcon() {
 export default function LaporanPenjualanPage() {
   const [startDate, setStartDate] = useState(DEFAULT_START);
   const [endDate, setEndDate] = useState(DEFAULT_END);
+  const [semester, setSemester] = useState("ganjil-2026");
   const [seller, setSeller] = useState("all");
   const [appliedSeller, setAppliedSeller] = useState("all");
 
-  const rows =
-    appliedSeller === "all"
-      ? SALES_REPORT
-      : SALES_REPORT.filter((row) => row.business === appliedSeller);
+  const applySemester = (value: string) => {
+    setSemester(value);
+    if (value === "ganjil-2026") {
+      setStartDate("2026-07-01");
+      setEndDate("2026-12-31");
+    } else if (value === "genap-2026") {
+      setStartDate("2026-01-01");
+      setEndDate("2026-06-30");
+    } else {
+      setStartDate("2026-01-01");
+      setEndDate("2026-12-31");
+    }
+  };
+
+  const rows = SALES_REPORT.filter((row) => {
+    if (appliedSeller !== "all" && row.business !== appliedSeller) return false;
+    if (startDate && row.date < startDate) return false;
+    if (endDate && row.date > endDate) return false;
+    return true;
+  });
 
   const total = rows.reduce(
     (acc, row) => ({
@@ -131,6 +148,7 @@ export default function LaporanPenjualanPage() {
   const resetFilters = () => {
     setStartDate(DEFAULT_START);
     setEndDate(DEFAULT_END);
+    setSemester("ganjil-2026");
     setSeller("all");
     setAppliedSeller("all");
   };
@@ -199,7 +217,7 @@ export default function LaporanPenjualanPage() {
       </div>
 
       <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
           <div>
             <label htmlFor="tanggal-mulai" className="block text-xs font-semibold text-slate-600 mb-1.5">
               Tanggal Mulai
@@ -223,6 +241,21 @@ export default function LaporanPenjualanPage() {
               onChange={(event) => setEndDate(event.target.value)}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
+          </div>
+          <div>
+            <label htmlFor="semester" className="block text-xs font-semibold text-slate-600 mb-1.5">
+              Semester
+            </label>
+            <select
+              id="semester"
+              value={semester}
+              onChange={(event) => applySemester(event.target.value)}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="ganjil-2026">Semester Ganjil 2026/2027</option>
+              <option value="genap-2026">Semester Genap 2025/2026</option>
+              <option value="semua">Semua Periode</option>
+            </select>
           </div>
           <div>
             <label htmlFor="pilihan-penjual" className="block text-xs font-semibold text-slate-600 mb-1.5">
@@ -340,6 +373,13 @@ export default function LaporanPenjualanPage() {
                   </td>
                 </tr>
               ))}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500">
+                    Tidak ada data penjualan pada periode ini.
+                  </td>
+                </tr>
+              )}
             </tbody>
             <tfoot>
               <tr className="border-t border-slate-200 bg-slate-50/60 font-bold text-slate-900">

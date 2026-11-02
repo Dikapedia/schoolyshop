@@ -324,7 +324,7 @@ export default function PengirimanPage() {
                   disabled
                   className="px-3 py-1.5 text-sm border rounded-lg text-slate-300 border-slate-200 cursor-not-allowed"
                 >
-                  Sebelumnya
+                  ‹
                 </button>
                 <button
                   type="button"
@@ -337,7 +337,7 @@ export default function PengirimanPage() {
                   disabled
                   className="px-3 py-1.5 text-sm border rounded-lg text-slate-300 border-slate-200 cursor-not-allowed"
                 >
-                  Selanjutnya
+                  ›
                 </button>
               </div>
             </div>

@@ -68,7 +68,7 @@ const orders = [
   {
     id: "ORD-001",
     buyer: "Budi Santoso",
-    meta: "Siswa • XI IPA 2",
+    meta: "Siswa • XI TKJ 2",
     product: "Kemeja Batik Klasik Solo (1 pcs)",
     total: "Rp120.000",
     status: "Diproses",
@@ -104,7 +104,7 @@ const orders = [
   {
     id: "ORD-006",
     buyer: "Dimas Prakoso",
-    meta: "Siswa • XII IPA 1",
+    meta: "Siswa • XII Akuntansi 1",
     product: "Gantungan Kunci Kayu Ukir (2 pcs)",
     total: "Rp35.000",
     status: "Selesai",
@@ -195,9 +195,9 @@ export default function AdminPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 py-4">
           <p className="text-sm text-slate-500">Menampilkan 5 pesanan terbaru</p>
           <div className="flex items-center gap-2">
-            <button className="px-3 py-1.5 text-sm text-slate-400 border border-slate-200 rounded-lg cursor-not-allowed">Sebelumnya</button>
+            <button className="px-3 py-1.5 text-sm text-slate-400 border border-slate-200 rounded-lg cursor-not-allowed">‹</button>
             <button className="px-3 py-1.5 text-sm text-white bg-blue-600 rounded-lg">1</button>
-            <button className="px-3 py-1.5 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Selanjutnya</button>
+            <button className="px-3 py-1.5 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">›</button>
           </div>
         </div>
       </div>

@@ -194,7 +194,7 @@ export default function PengembalianDitolakPage() {
                 <p className="text-sm font-semibold text-slate-900">{detail.customer}</p>
                 <p className="text-xs text-slate-500 mt-0.5">{detail.phone}</p>
                 <p className="text-xs text-slate-500 mt-1">
-                  Siswa SMA Kelas XII IPA • NIS: 25240081
+                  Siswa SMK Kelas XII TKJ • NIS: 25240081
                 </p>
               </div>
             </div>
@@ -228,7 +228,7 @@ export default function PengembalianDitolakPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <span className="inline-block rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-700">
-                  Seragam Resmi SMA
+                  Seragam Resmi SMK
                 </span>
                 <p className="text-sm font-semibold text-slate-900 mt-2">{productName}</p>
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">

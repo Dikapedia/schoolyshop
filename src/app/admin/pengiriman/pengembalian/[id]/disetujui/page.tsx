@@ -204,7 +204,7 @@ export default function PengembalianDisetujuiPage() {
                 <p className="text-sm font-semibold text-slate-900">{detail.customer}</p>
                 <p className="text-xs text-slate-500 mt-0.5">{detail.phone}</p>
                 <p className="text-xs text-slate-500 mt-1">
-                  Siswa SMA Kelas XII IPA • NIS: 25240081
+                  Siswa SMK Kelas XII TKJ • NIS: 25240081
                 </p>
               </div>
             </div>

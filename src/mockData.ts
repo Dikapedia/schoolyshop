@@ -66,11 +66,11 @@ export function initMockData() {
   const returnsKey = "schooly.returns";
   const invoicesKey = "schooly.invoices";
 
-  const existingOrders = JSON.parse(window.localStorage.getItem(ordersKey) || "{}") as Record<string, any[]>;
+  const existingOrders = JSON.parse(window.localStorage.getItem(ordersKey) || "{}") as Record<string, unknown[]>;
   existingOrders[userId] = orders;
   window.localStorage.setItem(ordersKey, JSON.stringify(existingOrders));
 
-  const existingReturns = JSON.parse(window.localStorage.getItem(returnsKey) || "{}") as Record<string, any[]>;
+  const existingReturns = JSON.parse(window.localStorage.getItem(returnsKey) || "{}") as Record<string, unknown[]>;
   existingReturns[userId] = returns;
   window.localStorage.setItem(returnsKey, JSON.stringify(existingReturns));
 

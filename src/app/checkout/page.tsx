@@ -294,7 +294,7 @@ export default function CheckoutPage() {
                       </svg>
                     </span>
                     <div>
-                      <p className="text-sm font-bold">Titik Asal: Koperasi SMAN 1 Bandung</p>
+                      <p className="text-sm font-bold">Titik Asal: Koperasi SMK Suka Maju</p>
                       <p className="text-xs text-slate-500">Jl. Ir. H. Juanda No. 93, Dago, Bandung</p>
                     </div>
                   </div>
