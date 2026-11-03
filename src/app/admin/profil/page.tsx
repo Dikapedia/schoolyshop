@@ -2,8 +2,8 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "@/lib/auth/use-session";
-import { saveSession, clearSession } from "@/lib/auth/session";
+import { useSession } from "@/api/auth";
+import { saveSession, clearSession } from "@/api/auth";
 import { site } from "@/lib/site";
 
 export default function AdminProfilPage() {

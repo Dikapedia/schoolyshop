@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { inter } from "@/lib/fonts";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
-import { useSession } from "@/lib/auth/use-session";
+import { useSession } from "@/api/auth";
 
 type Order = {
   id: string;

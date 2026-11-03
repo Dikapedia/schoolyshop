@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useSession } from "@/lib/auth/use-session";
+import { useSession } from "@/api/auth";
 import {
   BarChartIcon,
   BellIcon,
@@ -15,7 +15,7 @@ import {
   TruckIcon,
   UsersIcon,
 } from "@/components/icons";
-import { clearSession } from "@/lib/auth/session";
+import { clearSession } from "@/api/auth";
 
 type MenuIconName = "dashboard" | "seller" | "product" | "order" | "shipping" | "users" | "report";
 

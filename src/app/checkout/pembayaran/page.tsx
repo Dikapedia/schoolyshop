@@ -7,7 +7,7 @@ import { inter } from "@/lib/fonts";
 import { site } from "@/lib/site";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
-import { useSession } from "@/lib/auth/use-session";
+import { useSession } from "@/api/auth";
 import { formatRupiah } from "@/lib/format";
 import { useCart } from "@/lib/shop/cart";
 import { getProductById } from "@/lib/shop/products";

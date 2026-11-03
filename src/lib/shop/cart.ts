@@ -1,5 +1,5 @@
 import { useMemo, useSyncExternalStore } from "react";
-import { SESSION_EVENT, readSessionRaw } from "@/lib/auth/session";
+import { SESSION_EVENT, readSessionRaw } from "@/api/auth";
 
 // Keranjang sederhana di browser (localStorage) agar tombol
 // "Tambah ke Keranjang" dan angka di header berfungsi.

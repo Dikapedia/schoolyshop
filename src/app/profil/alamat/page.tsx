@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useSession } from "@/lib/auth/use-session";
+import { useSession } from "@/api/auth";
 import { useRouter } from "next/navigation";
 import { inter } from "@/lib/fonts";
 import { site } from "@/lib/site";

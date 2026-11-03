@@ -2,8 +2,8 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useSession } from "@/lib/auth/use-session";
-import { saveSession, clearSession } from "@/lib/auth/session";
+import { useSession } from "@/api/auth";
+import { saveSession, clearSession } from "@/api/auth";
 
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";

@@ -5,7 +5,7 @@ import { inter } from "@/lib/fonts";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { formatRupiah } from "@/lib/format";
-import { useSession } from "@/lib/auth/use-session";
+import { useSession } from "@/api/auth";
 import { useRouter } from "next/navigation";
 import { site } from "@/lib/site";
 

@@ -3,10 +3,9 @@
 import { useEffect, useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { login } from "@/lib/auth/api";
+import { login, saveSession } from "@/api/auth";
+import { getApiErrorMessage } from "@/api/errors";
 import { ADMIN_HOME } from "@/lib/auth/redirect";
-import { saveSession } from "@/lib/auth/session";
-import { AuthError } from "@/lib/auth/types";
 import { validateLogin } from "@/lib/auth/validation";
 import { Field, PasswordField } from "./Field";
 import { FormAlert, SubmitButton } from "./FormParts";
@@ -68,11 +67,7 @@ export default function LoginForm({ nextPath, justRegistered }: Props) {
         router.replace(session.role === "admin" ? ADMIN_HOME : nextPath);
       });
     } catch (error) {
-      setFormError(
-        error instanceof AuthError
-          ? error.message
-          : "Terjadi kesalahan. Silakan coba lagi.",
-      );
+      setFormError(getApiErrorMessage(error));
     } finally {
       setSubmitting(false);
     }

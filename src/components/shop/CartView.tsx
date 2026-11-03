@@ -8,7 +8,7 @@ import { TrashIcon } from "@/components/icons";
 import { formatRupiah } from "@/lib/format";
 import { removeFromCart, updateCartQuantity, useCart } from "@/lib/shop/cart";
 import { getProductById, type Product } from "@/lib/shop/products";
-import { useSession } from "@/lib/auth/use-session";
+import { useSession } from "@/api/auth";
 import { site } from "@/lib/site";
 
 function sellerShort(label: string): string {
