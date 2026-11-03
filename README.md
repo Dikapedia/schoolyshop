@@ -23,11 +23,12 @@ Toko belanja daring internal sekolah (SMK Suka Maju) untuk menjual produk kreati
 | Framework | Next.js 16 (App Router) |
 | Frontend | React 19 + TypeScript 5 |
 | Styling | Tailwind CSS v4 (Turbopack) |
+| Validasi kontrak | Zod |
 | Font | next/font (Geist Sans/Mono, Inter) |
 | Linting | ESLint 9 |
 | Bundler | Turbopack |
 
-> **Catatan**: Project ini hanya frontend. Data produk, user, dan session disimpan via `localStorage` / mock (bukan database). Backend API (`NEXT_PUBLIC_API_URL`) siap untuk integrasi saat nanti dibangun.
+> **Catatan**: Project ini hanya frontend. Seluruh akses data melewati lapisan `src/api/`; data produk, user, dan session masih memakai adapter mock di `src/api/mocks/` (bukan database). Kontrak dan kebutuhan backend didokumentasikan di [`docs/frontend-needs.md`](docs/frontend-needs.md).
 
 ---
 
@@ -80,13 +81,19 @@ schollyshop/
 │   │   ├── auth/              # LoginForm, RegisterForm, BrandPanel
 │   │   └── shop/              # CartView, Hero, KatalogProduk, ProductCard,
 │   │                          # ProductDetail, SiteFooter, SiteHeader
+│   ├── api/                   # Lapisan API & kontrak request/response
+│   │   ├── auth.ts, products.ts, cart.ts, checkout.ts
+│   │   ├── orders.ts, returns.ts, reviews.ts, users.ts
+│   │   ├── admin/             # Kontrak khusus panel admin
+│   │   └── mocks/             # Seluruh data mock + adapter localStorage
 │   └── lib/
 │       ├── site.ts            # Konfigurasi sekolah, WhatsApp number
 │       ├── format.ts          # Utility format harga/dan
 │       ├── fonts.ts           # next/font definitions
 │       ├── cx.ts              # Class name helper
-│       ├── auth/              # session, API mock, types, validation
-│       └── shop/              # cart, products data
+│       └── auth/              # validasi form & redirect
+├── docs/
+│   └── frontend-needs.md      # Kebutuhan frontend terhadap backend per halaman
 ├── public/
 ├── .env.example
 ├── next.config.ts
@@ -185,8 +192,8 @@ Header → Klik "Bantuan" → /profil/bantuan
 
 ## Catatan Pengembangan
 
+- **Lapisan API**: Semua pengambilan data berada di `src/api/` (satu file per domain). Komponen tidak lagi mengakses `localStorage` atau `fetch` secara langsung.
 - **Mode Dummy**: Set `NEXT_PUBLIC_USE_MOCK_AUTH=true` (default) untuk menggunakan akun dummy. Jika ada backend, set ke `false` dan isi `NEXT_PUBLIC_API_URL`.
-- **Data Produk**: 24 produk contoh hardcoded di `src/lib/shop/products.ts`.
+- **Data Mock**: Seluruh data contoh berada di `src/api/mocks/`, termasuk seed pesanan, retur, produk, dan data admin.
 - **Session & Cart**: Disimpan di `localStorage`, bukan `httpOnly cookie` — cocok untuk demo, bukan production.
-- **Halaman Admin**: Masih placeholder, belum diimplementasikan.
-- **Lacak Pesanan**: Route `/pesanan` belum tersedia.
+- **Kontrak Backend**: Lihat `docs/frontend-needs.md` untuk daftar endpoint dan `TODO(backend)` per halaman.
