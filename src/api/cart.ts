@@ -3,7 +3,9 @@ import { SESSION_EVENT, readSessionRaw } from "@/api/auth";
 
 // Keranjang sederhana di browser (localStorage) agar tombol
 // "Tambah ke Keranjang" dan angka di header berfungsi.
-// Ganti dengan keranjang dari API backend bila diperlukan.
+//
+// TODO(backend): ganti penyimpanan lokal ini dengan endpoint cart
+// (GET/POST/PATCH/DELETE /cart) dan sinkronkan saat login.
 
 const KEY = "schooly.cart";
 const EVENT = "schooly:cart";
@@ -55,10 +57,7 @@ export function addToCart(productId: string, qty = 1): void {
 
 /** Tambah ke keranjang dengan cek login — return true jika berhasil, false jika butuh login. */
 export function addToCartWithAuth(productId: string, qty = 1): boolean {
-  const sessionRaw = 
-    window.localStorage.getItem("schooly.session") ??
-    window.sessionStorage.getItem("schooly.session");
-  if (!sessionRaw) {
+  if (!hasSession()) {
     return false;
   }
   addToCart(productId, qty);

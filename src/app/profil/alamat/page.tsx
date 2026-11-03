@@ -3,48 +3,19 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSession } from "@/api/auth";
+import {
+  getDemoAddress,
+  listAddresses,
+  removeAddress,
+  saveAddresses,
+  setPrimaryAddress,
+  type Address,
+} from "@/api/addresses";
 import { useRouter } from "next/navigation";
 import { inter } from "@/lib/fonts";
 import { site } from "@/lib/site";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
-
-type Address = {
-  id: string;
-  name: string;
-  phone: string;
-  address: string;
-  postalCode: string;
-  note: string;
-  badges: string[];
-  isPrimary: boolean;
-  isPickupHub?: boolean;
-};
-
-// Helper types & functions for per‑user address storage
-type StoredAddresses = Record<string, Address[]>;
-
-function loadUserAddresses(sessionId: string | null): Address[] {
-  if (!sessionId) return [];
-  try {
-    const raw = window.localStorage.getItem("schooly.addresses");
-    const all: StoredAddresses = raw ? JSON.parse(raw) : {};
-    return all[sessionId] ?? [];
-  } catch {
-    return [];
-  }
-}
-
-function saveUserAddresses(sessionId: string, addresses: Address[]) {
-  try {
-    const raw = window.localStorage.getItem("schooly.addresses");
-    const all: StoredAddresses = raw ? JSON.parse(raw) : {};
-    all[sessionId] = addresses;
-    window.localStorage.setItem("schooly.addresses", JSON.stringify(all));
-  } catch {
-    // ignore storage errors
-  }
-}
 
 const emptyForm = {
   name: "",
@@ -70,29 +41,19 @@ export default function AlamatPengirimanPage() {
   }, [session, router, mounted]);
 
   const [addresses, setAddresses] = useState<Address[]>(() =>
-    session && mounted ? loadUserAddresses(session.id) : []);
+    session && mounted ? listAddresses(session.id) : []);
 
   // Populate demo address if none
   useEffect(() => {
     if (session && addresses.length === 0) {
-      const demo: Address = {
-        id: `address-demo-${Date.now()}`,
-        name: "Demo Alamat",
-        phone: "+62 812-0000-0000",
-        address: "Jalan Demo No.1, Kecamatan Demo, Kota Demo",
-        postalCode: "12345",
-        note: "Demo address for checkout",
-        badges: ["Rumah"],
-        isPrimary: true,
-      };
-      setAddresses([demo]);
+      setAddresses([getDemoAddress(`address-demo-${Date.now()}`)]);
     }
   }, [session, addresses.length]);
 
   // Persist addresses per‑user
   useEffect(() => {
     if (session) {
-      saveUserAddresses(session.id, addresses);
+      saveAddresses(session.id, addresses);
     }
   }, [addresses, session]);
   const [showForm, setShowForm] = useState(false);
@@ -169,19 +130,11 @@ export default function AlamatPengirimanPage() {
   }
 
   function setPrimary(id: string) {
-    setAddresses((current) =>
-      current.map((address) => ({ ...address, isPrimary: address.id === id }))
-    );
+    setAddresses((current) => setPrimaryAddress(current, id));
   }
 
-  function removeAddress(id: string) {
-    setAddresses((current) => {
-      const remaining = current.filter((address) => address.id !== id);
-      if (remaining.length > 0 && !remaining.some((address) => address.isPrimary)) {
-        remaining[0].isPrimary = true;
-      }
-      return remaining;
-    });
+  function handleRemoveAddress(id: string) {
+    setAddresses((current) => removeAddress(current, id));
   }
 
   return (
@@ -317,7 +270,7 @@ export default function AlamatPengirimanPage() {
                     )}
                     <button
                       type="button"
-                      onClick={() => removeAddress(address.id)}
+                      onClick={() => handleRemoveAddress(address.id)}
                       className="inline-flex items-center justify-center rounded-lg border border-red-200 p-1.5 text-red-500 transition hover:bg-red-50"
                       title="Hapus alamat"
                       aria-label={`Hapus alamat ${address.name}`}

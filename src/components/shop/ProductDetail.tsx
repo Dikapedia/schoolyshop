@@ -8,7 +8,7 @@ import { CheckIcon, ImageIcon } from "@/components/icons";
 import { cx } from "@/lib/cx";
 import { inter } from "@/lib/fonts";
 import { formatRupiah } from "@/lib/format";
-import { addToCartWithAuth } from "@/lib/shop/cart";
+import { addToCartWithAuth } from "@/api/cart";
 import type { Product } from "@/api/products";
 import { site, whatsappLink } from "@/lib/site";
 import SiteFooter from "./SiteFooter";

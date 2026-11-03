@@ -7,54 +7,21 @@ import { site } from "@/lib/site";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { useSession } from "@/api/auth";
+import {
+  getDemoAddress,
+  listAddresses,
+  saveAddresses,
+  type Address,
+} from "@/api/addresses";
+import { listShippingOptions, savePendingCheckout } from "@/api/checkout";
 import { formatRupiah } from "@/lib/format";
-import { useCart } from "@/lib/shop/cart";
+import { useCart } from "@/api/cart";
 import { getProductById } from "@/api/products";
-
-type Address = {
-  id: string;
-  name: string;
-  phone: string;
-  address: string;
-  postalCode: string;
-  note: string;
-  badges: string[];
-  isPrimary: boolean;
-  isPickupHub?: boolean;
-};
 
 const STEPS = ["Keranjang", "Alamat & Pengiriman", "Pembayaran", "Selesai"] as const;
 type StepIndex = 0 | 1 | 2 | 3;
 
-const SHIPPING_OPTIONS = [
-  { id: "jne", label: "JNE Express — Layanan Reguler", sub: "Estimasi tiba: Besok atau 1-2 Hari Kerja", fee: 15000, badge: "Termurah" as const },
-  { id: "sicepat", label: "SiCepat — SIUNTUNG", sub: "Estimasi tiba: 1-2 Hari Kerja", fee: 16500, badge: undefined },
-  { id: "jt", label: "J&T Express — EZ Reguler", sub: "Estimasi tiba: 2-3 Hari Kerja", fee: 18000, badge: undefined },
-  { id: "anteraja", label: "AnterAja — Reguler Parcel", sub: "Estimasi tiba: 2-3 Hari Kerja", fee: 17000, badge: undefined },
-] as const;
-
-function loadAddresses(sessionId: string | null): Address[] {
-  if (!sessionId) return [];
-  try {
-    const raw = window.localStorage.getItem("schooly.addresses");
-    if (!raw) return [];
-    const all: Record<string, Address[]> = JSON.parse(raw);
-    return all[sessionId] ?? [];
-  } catch {
-    return [];
-  }
-}
-
-function saveAddresses(sessionId: string, addresses: Address[]): void {
-  try {
-    const raw = window.localStorage.getItem("schooly.addresses");
-    const all: Record<string, Address[]> = raw ? JSON.parse(raw) : {};
-    all[sessionId] = addresses;
-    window.localStorage.setItem("schooly.addresses", JSON.stringify(all));
-  } catch {
-    // ignore
-  }
-}
+const SHIPPING_OPTIONS = listShippingOptions();
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -92,21 +59,12 @@ export default function CheckoutPage() {
       return;
     }
     if (!session) return;
-    const all = loadAddresses(session.id);
+    const all = listAddresses(session.id);
     if (all.length > 0) {
       setAddresses(all);
     } else {
       // Seed demo address (alamat penerima/pembeli)
-      const demo: Address = {
-        id: "address-demo",
-        name: "Demo Alamat",
-        phone: "+62 812-0000-0000",
-        address: "Jalan Demo No.1, Kecamatan Demo, Kota Demo",
-        postalCode: "12345",
-        note: "Demo address for checkout",
-        badges: ["Rumah"],
-        isPrimary: true,
-      };
+      const demo = getDemoAddress();
       setAddresses([demo]);
       saveAddresses(session.id, [demo]);
     }
@@ -130,15 +88,11 @@ export default function CheckoutPage() {
   const selectedAddressData = addresses.find((a) => a.id === selectedAddress);
 
   function handleCheckout() {
-    try {
-      const data: Record<string, string> = {};
-      if (selectedAddress) data.addressId = selectedAddress;
-      if (shipping) data.shippingId = shipping;
-      if (session?.id) data.sessionId = session.id;
-      window.localStorage.setItem("schooly.checkout.pending", JSON.stringify(data));
-    } catch {
-      // ignore
-    }
+    const data: { addressId?: string; shippingId?: string; sessionId?: string } = {};
+    if (selectedAddress) data.addressId = selectedAddress;
+    if (shipping) data.shippingId = shipping;
+    if (session?.id) data.sessionId = session.id;
+    savePendingCheckout(data);
     router.push("/checkout/pembayaran");
   }
 

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { TrashIcon } from "@/components/icons";
 import { formatRupiah } from "@/lib/format";
-import { removeFromCart, updateCartQuantity, useCart } from "@/lib/shop/cart";
+import { removeFromCart, updateCartQuantity, useCart } from "@/api/cart";
 import { getProductById, type Product } from "@/api/products";
 import { useSession } from "@/api/auth";
 import { site } from "@/lib/site";

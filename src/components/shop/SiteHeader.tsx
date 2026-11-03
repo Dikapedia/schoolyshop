@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { CartIcon, SearchIcon, ShoppingBagIcon } from "@/components/icons";
 import { clearSession } from "@/api/auth";
 import { useSession } from "@/api/auth";
-import { useCartCount } from "@/lib/shop/cart";
+import { useCartCount } from "@/api/cart";
 import { site } from "@/lib/site";
 
 type NavItem = { label: string; href: string; external?: boolean };

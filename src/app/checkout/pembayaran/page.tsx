@@ -8,50 +8,17 @@ import { site } from "@/lib/site";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { useSession } from "@/api/auth";
+import { listAddresses, type Address } from "@/api/addresses";
+import {
+  getPendingCheckout,
+  listShippingOptions,
+  type PendingCheckout,
+} from "@/api/checkout";
 import { formatRupiah } from "@/lib/format";
-import { useCart } from "@/lib/shop/cart";
+import { useCart } from "@/api/cart";
 import { getProductById } from "@/api/products";
 
-type PendingCheckout = {
-  addressId?: string;
-  shippingId?: string;
-  sessionId?: string;
-};
-
-type Address = {
-  id: string;
-  name: string;
-  phone: string;
-  address: string;
-  postalCode: string;
-  note: string;
-  badges: string[];
-  isPrimary: boolean;
-  isPickupHub?: boolean;
-};
-
-type ProductImageMap = Record<string, string>;
-
-function loadPending(): PendingCheckout | null {
-  try {
-    const raw = window.localStorage.getItem("schooly.checkout.pending");
-    return raw ? (JSON.parse(raw) as PendingCheckout) : null;
-  } catch {
-    return null;
-  }
-}
-
-function loadAddresses(sessionId: string | null): Address[] {
-  if (!sessionId) return [];
-  try {
-    const raw = window.localStorage.getItem("schooly.addresses");
-    if (!raw) return [];
-    const all: Record<string, Address[]> = JSON.parse(raw);
-    return all[sessionId] ?? [];
-  } catch {
-    return [];
-  }
-}
+const SHIPPING_OPTIONS = listShippingOptions();
 
 export default function PembayaranPage() {
   const router = useRouter();
@@ -69,9 +36,9 @@ export default function PembayaranPage() {
       router.replace("/login?next=/checkout/pembayaran");
       return;
     }
-    const p = loadPending();
+    const p = getPendingCheckout();
     if (p) setPending(p);
-    setAddresses(loadAddresses(session.id));
+    setAddresses(listAddresses(session.id));
     if (p?.addressId) setSelectedAddress(p.addressId);
     if (p?.shippingId) setShipping(p.shippingId);
   }, [session, router]);
@@ -97,12 +64,6 @@ export default function PembayaranPage() {
   }, [lines]);
 
   const subtotal = items.reduce((s, i) => s + i.subtotal, 0);
-  const SHIPPING_OPTIONS = [
-    { id: "jne", label: "JNE Express — Layanan Reguler", sub: "Estimasi tiba: Besok atau 1-2 Hari Kerja", fee: 15000, badge: "Termurah" as const },
-    { id: "sicepat", label: "SiCepat — SIUNTUNG", sub: "Estimasi tiba: 1-2 Hari Kerja", fee: 16500, badge: undefined },
-    { id: "jt", label: "J&T Express — EZ Reguler", sub: "Estimasi tiba: 2-3 Hari Kerja", fee: 18000, badge: undefined },
-    { id: "anteraja", label: "AnterAja — Reguler Parcel", sub: "Estimasi tiba: 2-3 Hari Kerja", fee: 17000, badge: undefined },
-  ] as const;
   const selectedShippingData = SHIPPING_OPTIONS.find((s) => s.id === shipping);
   const shippingFee = selectedShippingData?.fee ?? 0;
   const total = subtotal + shippingFee;
