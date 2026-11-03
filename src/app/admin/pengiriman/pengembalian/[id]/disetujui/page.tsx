@@ -11,7 +11,7 @@ import {
   ChevronLeftIcon,
   InfoIcon,
 } from "@/components/icons";
-import { getAdminReturnDetail } from "@/lib/shop/admin-return-details";
+import { getAdminReturnDetail } from "@/api/admin/return-details";
 
 type StepTone = "done" | "active" | "pending";
 

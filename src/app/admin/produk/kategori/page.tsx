@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { CATEGORY_OPTIONS } from "@/lib/shop/admin-products";
+import { CATEGORY_OPTIONS } from "@/api/admin/products";
 
 type CategoryItem = {
   id: number;

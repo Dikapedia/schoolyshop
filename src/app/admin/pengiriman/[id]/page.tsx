@@ -10,7 +10,7 @@ import {
   PrinterIcon,
   TruckIcon,
 } from "@/components/icons";
-import { getAdminShipmentDetail } from "@/lib/shop/admin-shipments";
+import { getAdminShipmentDetail } from "@/api/admin/shipments";
 
 function CalendarIcon({ className }: { className?: string }) {
   return (

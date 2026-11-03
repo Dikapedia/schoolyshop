@@ -4,9 +4,9 @@ import { useState, useRef, useEffect, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CartIcon, SearchIcon, ShoppingBagIcon } from "@/components/icons";
-import { clearSession } from "@/lib/auth/session";
-import { useSession } from "@/lib/auth/use-session";
-import { useCartCount } from "@/lib/shop/cart";
+import { clearSession } from "@/api/auth";
+import { useSession } from "@/api/auth";
+import { useCartCount } from "@/api/cart";
 import { site } from "@/lib/site";
 
 type NavItem = { label: string; href: string; external?: boolean };

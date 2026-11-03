@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import BatikProductIllustration from "@/components/admin/BatikProductIllustration";
 import { CheckIcon, ChevronLeftIcon } from "@/components/icons";
-import { getAdminReturnDetail } from "@/lib/shop/admin-return-details";
+import { getAdminReturnDetail } from "@/api/admin/return-details";
 
 type ConfirmAction = "accepted" | "rejected";
 

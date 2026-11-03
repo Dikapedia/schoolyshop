@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useSession } from "@/lib/auth/use-session";
+import { useSession } from "@/api/auth";
 import { inter } from "@/lib/fonts";
 import { site } from "@/lib/site";
 import SiteHeader from "@/components/shop/SiteHeader";

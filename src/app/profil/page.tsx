@@ -2,20 +2,17 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useSession } from "@/lib/auth/use-session";
-import { saveSession, clearSession } from "@/lib/auth/session";
+import {
+  changePassword,
+  clearSession,
+  saveSession,
+  useSession,
+} from "@/api/auth";
+import { getApiErrorMessage } from "@/api/errors";
+import { saveProfilePhone } from "@/api/users";
 
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
-
-type StoredUser = {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-  role: string;
-  active: boolean;
-};
 
 export default function ProfilPage() {
   const session = useSession();
@@ -57,9 +54,7 @@ export default function ProfilPage() {
 
   useEffect(() => {
     if (!mounted || !session) return;
-    try {
-      window.localStorage.setItem("schooly.phone", phone.join(""));
-    } catch {}
+    saveProfilePhone(phone);
   }, [phone, mounted, session]);
 
   const displayPhone = "+62" + phone.join("");
@@ -335,6 +330,7 @@ export default function ProfilPage() {
                           <svg className="absolute left-3 top-3 h-4 w-4 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
+                          {/* TODO(backend): tanggal daftar dan tahun ajaran masih statis; ambil dari GET /users/me. */}
                           <input
                             type="text"
                             value="12 Juli 2026 (Tahun Ajaran Baru)"
@@ -461,18 +457,16 @@ export default function ProfilPage() {
                           setError("Konfirmasi kata sandi tidak cocup.");
                           return;
                         }
-                        // Verify old password matches current user
-                        const users: StoredUser[] = JSON.parse(localStorage.getItem("schooly.mock.users") || "[]");
-                        const user = users.find((u) => u.id === session?.id);
-                        if (!user || user.password !== passwordLama) {
-                          setError("Kata sandi lama tidak sesuai.");
+                        try {
+                          changePassword({
+                            userId: session?.id ?? "",
+                            currentPassword: passwordLama,
+                            newPassword: passwordBaru,
+                          });
+                        } catch (error) {
+                          setError(getApiErrorMessage(error));
                           return;
                         }
-                        // Update password for current user in mock storage
-                        const updated = users.map((u) =>
-                          u.id === session?.id ? { ...u, password: passwordBaru } : u
-                        );
-                        localStorage.setItem("schooly.mock.users", JSON.stringify(updated));
                         setPasswordLama("");
                         setPasswordBaru("");
                         setKonfirmasiPassword("");

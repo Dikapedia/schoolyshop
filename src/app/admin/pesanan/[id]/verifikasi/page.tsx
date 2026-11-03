@@ -10,7 +10,7 @@ import {
   StoreIcon,
   TruckIcon,
 } from "@/components/icons";
-import { getAdminOrderDetail } from "@/lib/shop/admin-order-details";
+import { getAdminOrderDetail } from "@/api/admin/order-details";
 
 const rupiah = (value: number) => `Rp${new Intl.NumberFormat("id-ID").format(value)}`;
 

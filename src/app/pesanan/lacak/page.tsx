@@ -5,14 +5,8 @@ import { useRouter } from "next/navigation";
 import { inter } from "@/lib/fonts";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
-import { useSession } from "@/lib/auth/use-session";
-
-type Tracking = {
-  order_id: string;
-  courier: string;
-  status: string;
-  history: { timestamp: string; location: string; description: string }[];
-};
+import { useSession } from "@/api/auth";
+import { trackShipment, type Tracking } from "@/api/shipments";
 
 const DEFAULT_MAP_CENTER = [-6.9667, 110.4167];
 const DEFAULT_MAP_ZOOM = 13;
@@ -41,19 +35,7 @@ export default function LacakPengirimanPage() {
       setError("Masukkan nomor resi atau ID pesanan.");
       return;
     }
-    // Simulated tracking response
-    const demo: Tracking = {
-      order_id: search,
-      courier: "JNE Express",
-      status: "Dalam Perjalanan",
-      history: [
-        { timestamp: "2025-01-15 09:30", location: "Gudang Utama Koperasi SMK Suka Maju", description: "Pesanan telah diterima dan dikemas" },
-        { timestamp: "2025-01-15 14:45", location: "Cikampek Semarang", description: "Barang berada di gudang pra-pengiriman" },
-        { timestamp: "2025-01-16 09:15", location: "Bandung Pusat", description: "Barang telah keluar dari gudang" },
-        { timestamp: "2025-01-16 14:30", location: "Tujuan", description: "Barang siap dikirim ke alamat" },
-      ],
-    };
-    setTracking(demo);
+    setTracking(trackShipment(search));
     setError("");
   }
 

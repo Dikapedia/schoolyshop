@@ -2,8 +2,8 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "@/lib/auth/use-session";
-import { saveSession, clearSession } from "@/lib/auth/session";
+import { useSession } from "@/api/auth";
+import { saveSession, clearSession } from "@/api/auth";
 import { site } from "@/lib/site";
 
 export default function AdminProfilPage() {
@@ -26,6 +26,7 @@ export default function AdminProfilPage() {
   const [passwordLama, setPasswordLama] = useState("");
   const [passwordBaru, setPasswordBaru] = useState("");
   const [konfirmasiPassword, setKonfirmasiPassword] = useState("");
+  // TODO(backend): data sekolah masih statis dan perlu endpoint PATCH /admin/settings.
   const [schoolName, setSchoolName] = useState<string>(site.school);
   const [schoolAddress, setSchoolAddress] = useState<string>("Jl. Pendidikan No. 1, Jakarta");
   const [schoolPhone, setSchoolPhone] = useState<string>("+62 21 1234 5678");

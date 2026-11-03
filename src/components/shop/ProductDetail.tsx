@@ -8,8 +8,8 @@ import { CheckIcon, ImageIcon } from "@/components/icons";
 import { cx } from "@/lib/cx";
 import { inter } from "@/lib/fonts";
 import { formatRupiah } from "@/lib/format";
-import { addToCartWithAuth } from "@/lib/shop/cart";
-import type { Product } from "@/lib/shop/products";
+import { addToCartWithAuth } from "@/api/cart";
+import type { Product } from "@/api/products";
 import { site, whatsappLink } from "@/lib/site";
 import SiteFooter from "./SiteFooter";
 import SiteHeader from "./SiteHeader";
@@ -56,6 +56,8 @@ function getExtra(product: Product) {
   return { stock, rating, reviews, discount, original, code, sellerSubtitle, sellerInitial, specs };
 }
 
+// TODO(backend): ukuran/varian dan stok per varian masih statis; gunakan
+// `variants[]` dari GET /products/:slug.
 const SIZES = ["S", "M", "L", "XL", "XXL"] as const;
 
 export default function ProductDetail({ product, related }: { product: Product; related: Product[] }) {

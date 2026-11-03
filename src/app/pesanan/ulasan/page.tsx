@@ -5,18 +5,11 @@ import { useRouter } from "next/navigation";
 import { inter } from "@/lib/fonts";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
-import { useSession } from "@/lib/auth/use-session";
+import { useSession } from "@/api/auth";
+import { listOrders, type Order } from "@/api/orders";
+import { createReviews, type ReviewDraft } from "@/api/reviews";
 
-type Order = {
-  id: string;
-  date: string;
-  items: { productId: string; name: string; qty: number; price: number }[];
-  total: number;
-  status: string;
-};
-
-type Review = {
-  productId: string;
+type ReviewState = {
   rating: number;
   comment: string;
 };
@@ -27,7 +20,7 @@ export default function UlasanPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [reviews, setReviews] = useState<Record<string, Review>>({});
+  const [reviews, setReviews] = useState<Record<string, ReviewState>>({});
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
@@ -42,11 +35,9 @@ export default function UlasanPage() {
       return;
     }
     try {
-      const raw = window.localStorage.getItem("schooly.orders");
-      if (!raw) throw new Error();
-      const all: Record<string, Order[]> = JSON.parse(raw);
-      const list = all[session.id] ?? [];
-      const found = list.find(o => o.id === id);
+      const list = listOrders(session.id);
+      if (list === null) throw new Error();
+      const found = list.find((item) => item.id === id);
       if (!found) setError("Pesanan tidak ditemukan.");
       else setOrder(found);
     } catch {
@@ -71,22 +62,14 @@ export default function UlasanPage() {
       return;
     }
     try {
-      const key = "schooly.reviews";
-      const existing = window.localStorage.getItem(key);
-      const all = existing ? JSON.parse(existing) : {};
-      const userList = all[session.id] ?? [];
-      const newReviews = order.items
-        .filter(item => reviews[item.productId]?.rating > 0)
-        .map(item => ({
-          orderId: order.id,
-          productId: item.productId,
-          productName: item.name,
-          rating: reviews[item.productId].rating,
-          comment: reviews[item.productId].comment || "",
-          submittedAt: new Date().toISOString(),
-        }));
-      all[session.id] = [...userList, ...newReviews];
-      window.localStorage.setItem(key, JSON.stringify(all));
+      const drafts: ReviewDraft[] = Object.entries(reviews).map(
+        ([productId, review]) => ({
+          productId,
+          rating: review.rating,
+          comment: review.comment,
+        }),
+      );
+      createReviews(session.id, order, drafts);
       setSubmitted(true);
     } catch {
       setError("Gagal menyimpan ulasan.");

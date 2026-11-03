@@ -1,8 +1,8 @@
 "use client";
 
 import { InfoIcon, TruckIcon } from "@/components/icons";
-import { getAdminOrderDetail } from "@/lib/shop/admin-order-details";
-import type { AdminShipment } from "@/lib/shop/admin-shipments";
+import { getAdminOrderDetail } from "@/api/admin/order-details";
+import type { AdminShipment } from "@/api/admin/shipments";
 
 type KonfirmasiPengirimanModalProps = {
   shipment: AdminShipment;

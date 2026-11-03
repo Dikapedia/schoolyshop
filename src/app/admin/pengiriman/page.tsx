@@ -12,14 +12,16 @@ import {
   TruckIcon,
 } from "@/components/icons";
 import {
-  ADMIN_SHIPMENTS,
   BITESHIP_COURIER,
   createTrackingNumber,
+  getAdminShipments,
   SHIPMENT_STATUS_OPTIONS,
   type AdminShipment,
   type ShipmentStatus,
-} from "@/lib/shop/admin-shipments";
+} from "@/api/admin/shipments";
 import KonfirmasiPengirimanModal from "@/components/admin/KonfirmasiPengirimanModal";
+
+const ADMIN_SHIPMENTS = getAdminShipments();
 
 function getStatusTone(status: ShipmentStatus) {
   switch (status) {

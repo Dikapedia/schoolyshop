@@ -1,19 +1,6 @@
-export type AdminUser = {
-  id: string;
-  name: string;
-  email: string;
-  joinedAt: string;
-  status: "Aktif" | "Nonaktif";
-  role: string;
-  verified: boolean;
-  totalOrders: number;
-  completedOrders: number;
-  processingOrders: number;
-};
+import type { BaseUser } from "../../admin/users";
 
-type BaseUser = Pick<AdminUser, "id" | "name" | "email" | "joinedAt" | "status">;
-
-const BASE_USERS: BaseUser[] = [
+export const BASE_USER_MOCKS: BaseUser[] = [
   { id: "USR001", name: "Gizza Ayuningtyas Kusumawardhani", email: "gizza.ayuningtyas@example.com", joinedAt: "2026-08-12", status: "Aktif" },
   { id: "USR002", name: "Dilah Sekar Arum Puspitasari", email: "dilah.sekar@gmail.com", joinedAt: "2024-01-15", status: "Aktif" },
   { id: "USR003", name: "Syifa Kirana Dewi Larasati", email: "syifa.larasati@gmail.com", joinedAt: "2024-01-18", status: "Aktif" },
@@ -45,41 +32,3 @@ const BASE_USERS: BaseUser[] = [
   { id: "USR029", name: "Bima Sakti Pratama", email: "bima.sakti@gmail.com", joinedAt: "2024-04-16", status: "Aktif" },
   { id: "USR030", name: "Zahra Aulia Putri", email: "zahra.aulia@gmail.com", joinedAt: "2024-04-19", status: "Aktif" },
 ];
-
-const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-const MONTHS_LONG = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
-
-export function formatUserDate(isoDate: string, style: "short" | "long" = "short"): string {
-  const [year, month, day] = isoDate.split("-").map(Number);
-  if (style === "long") {
-    return `${day} ${MONTHS_LONG[month - 1]} ${year}`;
-  }
-  return `${String(day).padStart(2, "0")} ${MONTHS_SHORT[month - 1]} ${year}`;
-}
-
-export const ADMIN_USERS: AdminUser[] = BASE_USERS.map((user, index) => {
-  const totalOrders = index === 0 ? 4 : (index % 5) + 1;
-  const processingOrders = 1;
-
-  return {
-    ...user,
-    role: "Pengguna Umum / Pembeli",
-    verified: true,
-    totalOrders,
-    completedOrders: totalOrders - processingOrders,
-    processingOrders,
-  };
-});

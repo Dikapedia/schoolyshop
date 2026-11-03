@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ChevronLeftIcon, PrinterIcon } from "@/components/icons";
-import { getAdminShipmentDetail } from "@/lib/shop/admin-shipments";
+import { getAdminShipmentDetail } from "@/api/admin/shipments";
 
+// TODO(backend): pola barcode masih statis; gunakan barcode/resi valid dari GET /admin/shipments/:id.
 const BARCODE_PATTERN =
   "1101001011010010110100110100101101001011011010010110100101101101001011010010110110100101101001011011010010110100101101001011010010110100101101001011010010110100101101";
 

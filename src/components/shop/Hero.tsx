@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { CheckIcon, ArrowRightIcon, ImageIcon } from "@/components/icons";
-import { products } from "@/lib/shop/products";
+import { listProducts } from "@/api/products";
 import { site, whatsappLink } from "@/lib/site";
+
+const products = listProducts();
 
 const secondaryButton =
   "inline-flex h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 transition hover:bg-slate-50";

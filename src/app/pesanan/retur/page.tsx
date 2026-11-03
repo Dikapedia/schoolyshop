@@ -6,22 +6,10 @@ import { inter } from "@/lib/fonts";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { formatRupiah } from "@/lib/format";
-import { useSession } from "@/lib/auth/use-session";
+import { useSession } from "@/api/auth";
+import { listOrders, type Order } from "@/api/orders";
+import { createReturn } from "@/api/returns";
 import { site } from "@/lib/site";
-
-type Order = {
-  id: string;
-  date: string;
-  items: { productId: string; name: string; qty: number; price: number }[];
-  total: number;
-  status: string;
-};
-
-type ReturnRequest = {
-  orderId: string;
-  items: { productId: string; name: string; qty: number; reason: string }[];
-  submittedAt: string;
-};
 
 export default function ReturPage() {
   const router = useRouter();
@@ -44,11 +32,9 @@ export default function ReturPage() {
       return;
     }
     try {
-      const raw = window.localStorage.getItem("schooly.orders");
-      if (!raw) throw new Error();
-      const all: Record<string, Order[]> = JSON.parse(raw);
-      const list = all[session.id] ?? [];
-      const found = list.find(o => o.id === id);
+      const list = listOrders(session.id);
+      if (list === null) throw new Error();
+      const found = list.find((item) => item.id === id);
       if (!found) setError("Pesanan tidak ditemukan.");
       else setOrder(found);
     } catch {
@@ -71,18 +57,11 @@ export default function ReturPage() {
       setError("Pilih setidaknya satu item untuk dikembalikan.");
       return;
     }
-    const request: ReturnRequest = {
-      orderId: order.id,
-      items,
-      submittedAt: new Date().toISOString(),
-    };
     try {
-      const key = "schooly.returns";
-      const existing = window.localStorage.getItem(key);
-      const all = existing ? JSON.parse(existing) : {};
-      const userList = all[session.id] ?? [];
-      all[session.id] = [...userList, request];
-      window.localStorage.setItem(key, JSON.stringify(all));
+      createReturn(session.id, {
+        orderId: order.id,
+        items,
+      });
       setSubmitted(true);
     } catch {
       setError("Gagal menyimpan permintaan pengembalian.");

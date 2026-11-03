@@ -5,8 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { CheckIcon, ImageIcon, PlusIcon } from "@/components/icons";
 import { formatRupiah } from "@/lib/format";
-import { addToCartWithAuth } from "@/lib/shop/cart";
-import type { Product, SellerRole } from "@/lib/shop/products";
+import { addToCartWithAuth } from "@/api/cart";
+import type { Product, SellerRole } from "@/api/products";
 import { cx } from "@/lib/cx";
 import { useRouter } from "next/navigation";
 

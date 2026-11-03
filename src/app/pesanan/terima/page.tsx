@@ -6,16 +6,9 @@ import { inter } from "@/lib/fonts";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { formatRupiah } from "@/lib/format";
-import { useSession } from "@/lib/auth/use-session";
+import { useSession } from "@/api/auth";
+import { listOrders, markOrderReceived, type Order } from "@/api/orders";
 import { site } from "@/lib/site";
-
-type Order = {
-  id: string;
-  date: string;
-  items: { productId: string; name: string; qty: number; price: number }[];
-  total: number;
-  status: string;
-};
 
 export default function TerimaPesananPage() {
   const router = useRouter();
@@ -36,44 +29,25 @@ export default function TerimaPesananPage() {
       setLoading(false);
       return;
     }
-    try {
-      const raw = window.localStorage.getItem("schooly.orders");
-      if (!raw) {
-        setError("Belum ada riwayat pesanan.");
-        setLoading(false);
-        return;
-      }
-      const all: Record<string, Order[]> = JSON.parse(raw);
-      const list = all[session.id] ?? [];
-      const found = list.find((o: Order) => o.id === id);
-      if (!found) {
-        setError("Pesanan tidak ditemukan.");
-      } else {
-        setOrder(found);
-      }
-    } catch {
-      setError("Gagal membaca data pesanan.");
-    } finally {
+    const list = listOrders(session.id);
+    if (list === null) {
+      setError("Belum ada riwayat pesanan.");
       setLoading(false);
+      return;
     }
+    const found = list.find((item: Order) => item.id === id);
+    if (!found) {
+      setError("Pesanan tidak ditemukan.");
+    } else {
+      setOrder(found);
+    }
+    setLoading(false);
   }, [session, router]);
 
   function handleConfirm() {
     if (!session) return;
     setConfirmed(true);
-    // Update order status to "Selesai" in localStorage
-    try {
-      const raw = window.localStorage.getItem("schooly/orders");
-      if (raw) {
-        const all: Record<string, Order[]> = JSON.parse(raw);
-        const list = all[session.id] ?? [];
-        const updated = list.map((o: Order) => o.id === order?.id ? { ...o, status: "Selesai" } : o);
-        all[session.id] = updated;
-        window.localStorage.setItem("schooly/orders", JSON.stringify(all));
-      }
-    } catch {
-      // ignore
-    }
+    markOrderReceived(session.id, order?.id ?? "");
   }
 
   if (!session) return null;

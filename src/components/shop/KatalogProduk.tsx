@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { CATEGORIES, products, type Category } from "@/lib/shop/products";
+import { CATEGORIES, listProducts, type Category } from "@/api/products";
 import ProductCard from "./ProductCard";
 
 const SORTS = [
@@ -22,6 +22,7 @@ const PRICE_BUCKETS = [
 ] as const;
 
 const PAGE_SIZE = 12;
+const products = listProducts();
 
 export default function KatalogProduk() {
   const searchParams = useSearchParams();

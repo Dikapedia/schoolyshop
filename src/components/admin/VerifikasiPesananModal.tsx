@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircleIcon, ShieldCheckIcon } from "@/components/icons";
-import type { AdminOrderDetail } from "@/lib/shop/admin-order-details";
+import type { AdminOrderDetail } from "@/api/admin/order-details";
 
 const rupiah = (value: number) => `Rp${new Intl.NumberFormat("id-ID").format(value)}`;
 

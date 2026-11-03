@@ -1,10 +1,10 @@
 "use client";
 import { useEffect } from "react";
-import { initMockData } from "@/mockData";
+import { initializeLocalData } from "@/api/bootstrap";
 
 export default function RootLayoutClient({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    initMockData();
+    initializeLocalData();
   }, []);
   return <>{children}</>;
 }

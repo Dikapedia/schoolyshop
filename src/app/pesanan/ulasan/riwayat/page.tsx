@@ -5,16 +5,8 @@ import { useRouter } from "next/navigation";
 import { inter } from "@/lib/fonts";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
-import { useSession } from "@/lib/auth/use-session";
-
-type Review = {
-  orderId: string;
-  productId: string;
-  productName: string;
-  rating: number;
-  comment: string;
-  submittedAt: string;
-};
+import { useSession } from "@/api/auth";
+import { listReviews, type Review } from "@/api/reviews";
 
 export default function UlasanRiwayatPage() {
   const router = useRouter();
@@ -28,19 +20,13 @@ export default function UlasanRiwayatPage() {
       router.replace("/login?next=/pesanan/ulasan/riwayat");
       return;
     }
-    try {
-      const raw = window.localStorage.getItem("schooly.reviews");
-      if (!raw) {
-        setReviews([]);
-      } else {
-        const all: Record<string, Review[]> = JSON.parse(raw);
-        setReviews(all[session.id] ?? []);
-      }
-    } catch {
+    const data = listReviews(session.id);
+    if (data === null) {
       setError("Gagal memuat ulasan.");
-    } finally {
-      setLoading(false);
+    } else {
+      setReviews(data);
     }
+    setLoading(false);
   }, [session, router]);
 
   if (!session) return null;

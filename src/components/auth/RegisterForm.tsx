@@ -3,8 +3,8 @@
 import { useEffect, useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { register } from "@/lib/auth/api";
-import { AuthError } from "@/lib/auth/types";
+import { register } from "@/api/auth";
+import { getApiErrorMessage, isApiError } from "@/api/errors";
 import {
   normalizePhone,
   validateRegister,
@@ -83,14 +83,10 @@ export default function RegisterForm() {
         router.replace("/login?registered=1");
       });
     } catch (error) {
-      if (error instanceof AuthError && error.code === "EMAIL_TAKEN") {
+      if (isApiError(error) && error.code === "EMAIL_TAKEN") {
         setEmailTaken(error.message);
       } else {
-        setFormError(
-          error instanceof AuthError
-            ? error.message
-            : "Terjadi kesalahan. Silakan coba lagi.",
-        );
+        setFormError(getApiErrorMessage(error));
       }
     } finally {
       setSubmitting(false);
