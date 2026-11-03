@@ -7,6 +7,7 @@ import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { formatRupiah } from "@/lib/format";
 import { useSession } from "@/api/auth";
+import { getInvoiceDetail } from "@/api/invoices";
 import { listOrders, type Order } from "@/api/orders";
 import { useSearchParams } from "next/navigation";
 import { site } from "@/lib/site";
@@ -69,6 +70,7 @@ export default function InvoiceView() {
   }
 
   const selectedItem = order.items[0];
+  const invoice = getInvoiceDetail(order.id);
 
   return (
     <div className={`${inter.className} flex min-h-screen flex-col bg-slate-50 text-slate-900`}>
@@ -104,10 +106,10 @@ export default function InvoiceView() {
             <div className="rounded-2xl border border-slate-200 bg-white p-5">
               <p className="mb-3 text-xs font-semibold text-slate-400">Konsumen</p>
               <div className="space-y-2 text-sm">
-                <p className="font-semibold">Nabila Putri Ramadhani</p>
-                <p className="text-slate-500">Siswa Sekolah Menengah Kejuruan Negeri 1 Bandung</p>
-                <p className="text-slate-500">Email: nabila@example.com</p>
-                <p className="text-slate-500">Kontak: <a href="tel:+6281234567890" className="font-semibold">+62 812-3456-7890</a></p>
+                <p className="font-semibold">{invoice.customerName}</p>
+                <p className="text-slate-500">{invoice.customerType}</p>
+                <p className="text-slate-500">Email: {invoice.customerEmail}</p>
+                <p className="text-slate-500">Kontak: <a href="tel:+6281234567890" className="font-semibold">{invoice.customerPhone}</a></p>
               </div>
             </div>
 
@@ -115,11 +117,11 @@ export default function InvoiceView() {
             <div className="rounded-2xl border border-slate-200 bg-white p-5">
               <p className="mb-3 text-xs font-semibold text-slate-400">Alamat Envoi / Pengiriman</p>
               <div className="space-y-2 text-sm text-slate-700">
-                <p className="font-semibold">Nabila Putri Ramadhani</p>
-                <p className="text-slate-500">Jalan Cikondang No. 45, Ngesrep, Kec. Coblong, Kota Bandung</p>
-                <p className="text-slate-500">Kode Pos: 40115</p>
-                <p className="text-slate-500">Diterima oleh: Nabila Putri Ramadhani</p>
-                <p className="text-slate-500">Nomor WhatsApp: <a href="tel:+6281234567890" className="font-semibold">+62 812-3456-7890</a></p>
+                <p className="font-semibold">{invoice.customerName}</p>
+                <p className="text-slate-500">{invoice.shippingAddress}</p>
+                <p className="text-slate-500">Kode Pos: {invoice.shippingPostalCode}</p>
+                <p className="text-slate-500">Diterima oleh: {invoice.recipient}</p>
+                <p className="text-slate-500">Nomor WhatsApp: <a href="tel:+6281234567890" className="font-semibold">{invoice.customerPhone}</a></p>
               </div>
             </div>
 
@@ -168,11 +170,11 @@ export default function InvoiceView() {
               <div className="space-y-2 text-xs text-slate-600">
                 <div className="flex justify-between">
                   <span>Metode Pembayaran</span>
-                  <span className="font-medium">Virtual Account BCA</span>
+                  <span className="font-medium">{invoice.paymentMethod}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>VA Number / QRIS</span>
-                  <span className="font-mono font-bold">8801 2025 0101 001</span>
+                  <span className="font-mono font-bold">{invoice.virtualAccountNumber}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Midtrans Payment Gateway</span>

@@ -5,10 +5,12 @@ import { formatRupiah } from "@/lib/format";
 import {
   CATEGORY_OPTIONS,
   SELLER_OPTIONS,
-  initialAdminProducts,
+  getAdminProducts,
   type AdminProduct,
   type ProductStatus,
-} from "@/lib/shop/admin-products";
+} from "@/api/admin/products";
+
+const initialAdminProducts = getAdminProducts();
 
 type EditForm = {
   name: string;

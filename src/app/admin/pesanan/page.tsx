@@ -3,13 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  ADMIN_ORDERS,
+  getAdminOrders,
   ORDER_STATUS_OPTIONS,
   type OrderStatus,
   type PaymentStatus,
-} from "@/lib/shop/admin-orders";
+} from "@/api/admin/orders";
 
 const PAGE_SIZE = 10;
+const ADMIN_ORDERS = getAdminOrders();
 
 const PAYMENT_FILTERS = ["Semua Pembayaran", "Berhasil", "Menunggu Pembayaran"] as const;
 

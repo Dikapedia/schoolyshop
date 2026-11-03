@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  getDefaultAdminSellers,
+  loadAdminSellers,
+  saveAdminSellers,
+  type Seller,
+} from "@/api/admin/sellers";
 
+// TODO(backend): angka ringkasan masih statis; turunkan dari GET /admin/sellers.
 const summaryCards = [
   {
     title: "Total Supplier Terdaftar",
@@ -46,79 +53,8 @@ const summaryCards = [
   },
 ];
 
-type Seller = {
-  id: number;
-  initials: string;
-  name: string;
-  business: string;
-  type: string;
-  typeClass: string;
-  kk: string;
-  address: string;
-  whatsapp?: string;
-  avatarClass: string;
-};
-
-const SELLERS_STORAGE_KEY = "schooly.admin.sellers";
 const SELLERS_PAGE_SIZE = 4;
-
-const initialSellers: Seller[] = [
-  {
-    id: 1,
-    initials: "IS",
-    name: "Ismi",
-    business: "Batik Ismi",
-    type: "Siswa (Kelas XI-RPL)",
-    typeClass: "bg-blue-50 text-blue-700",
-    kk: "320104580290****",
-    address: "Ruang Koperasi SMK Suka Maju, Lantai 1",
-    avatarClass: "bg-blue-50 text-blue-600",
-  },
-  {
-    id: 2,
-    initials: "IN",
-    name: "Intan",
-    business: "Kerajinan Intan",
-    type: "Siswa (Kelas XII-Tata Busana)",
-    typeClass: "bg-blue-50 text-blue-700",
-    kk: "320104620381****",
-    address: "Lab Tata Busana, Gedung B",
-    avatarClass: "bg-blue-50 text-blue-600",
-  },
-  {
-    id: 3,
-    initials: "AL",
-    name: "Alwan",
-    business: "Alwan Craft",
-    type: "Siswa (Kelas X-DKV)",
-    typeClass: "bg-blue-50 text-blue-700",
-    kk: "320104710103****",
-    address: "Lab DKV, Gedung C",
-    avatarClass: "bg-blue-50 text-blue-600",
-  },
-  {
-    id: 4,
-    initials: "BU",
-    name: "Budi",
-    business: "Batik Budi",
-    type: "Guru (Seni Budaya)",
-    typeClass: "bg-violet-50 text-violet-700",
-    kk: "320108020405****",
-    address: "Ruang Guru Seni Budaya, Gedung A",
-    avatarClass: "bg-violet-50 text-violet-600",
-  },
-  {
-    id: 5,
-    initials: "NO",
-    name: "Novita",
-    business: "Novita Collection",
-    type: "Karyawan / TU",
-    typeClass: "bg-amber-50 text-amber-700",
-    kk: "320101150778****",
-    address: "Ruang Tata Usaha, Gedung A",
-    avatarClass: "bg-amber-50 text-amber-600",
-  },
-];
+const initialSellers = getDefaultAdminSellers();
 
 export default function PenjualSupplierPage() {
   const [addOpen, setAddOpen] = useState(false);
@@ -133,26 +69,15 @@ export default function PenjualSupplierPage() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(SELLERS_STORAGE_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw) as Seller[];
-        if (Array.isArray(saved) && saved.length > 0) {
-          setSellers(saved); // eslint-disable-line react-hooks/set-state-in-effect
-          setSelected(saved[0]);
-        }
-      }
-    } catch {
-      return;
+    const saved = loadAdminSellers();
+    if (saved) {
+      setSellers(saved); // eslint-disable-line react-hooks/set-state-in-effect
+      setSelected(saved[0]);
     }
   }, []);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(SELLERS_STORAGE_KEY, JSON.stringify(sellers));
-    } catch {
-      return;
-    }
+    saveAdminSellers(sellers);
   }, [sellers]);
 
   const filteredSellers = sellers.filter((seller) => {

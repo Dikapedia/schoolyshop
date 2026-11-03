@@ -56,6 +56,8 @@ function getExtra(product: Product) {
   return { stock, rating, reviews, discount, original, code, sellerSubtitle, sellerInitial, specs };
 }
 
+// TODO(backend): ukuran/varian dan stok per varian masih statis; gunakan
+// `variants[]` dari GET /products/:slug.
 const SIZES = ["S", "M", "L", "XL", "XXL"] as const;
 
 export default function ProductDetail({ product, related }: { product: Product; related: Product[] }) {

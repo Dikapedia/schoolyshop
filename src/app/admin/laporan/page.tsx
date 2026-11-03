@@ -5,11 +5,12 @@ import { useState } from "react";
 import {
   SELLER_AVATAR_CLASS,
   SELLER_ROLE_CLASS,
-  SALES_REPORT,
+  getSalesReport,
   formatReportDate,
   formatRupiah,
-} from "@/lib/shop/admin-sales-report";
+} from "@/api/admin/sales-report";
 
+const SALES_REPORT = getSalesReport();
 const DEFAULT_START = "2026-10-01";
 const DEFAULT_END = "2026-10-31";
 

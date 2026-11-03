@@ -9,12 +9,11 @@ import {
  * Konfigurasi tunggal untuk peralihan mock → API nyata.
  *
  * - `NEXT_PUBLIC_USE_MOCK_AUTH=true` (default) memakai akun demo lokal.
- * - `NEXT_PUBLIC_USE_MOCK_DATA=true` (default) memakai data mock di
- *   `src/api/mocks`.
+ * - Data domain lain berasal dari adapter di `src/api/mocks` sampai endpoint
+ *   backend tersedia.
  */
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 export const USE_MOCK_AUTH = process.env.NEXT_PUBLIC_USE_MOCK_AUTH !== "false";
-export const USE_MOCK_DATA = process.env.NEXT_PUBLIC_USE_MOCK_DATA !== "false";
 
 type RequestOptions<T> = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";

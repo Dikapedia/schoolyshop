@@ -1,40 +1,11 @@
-// DATA CONTOH. Ganti dengan data dari API backend saat sudah tersedia.
+import type { AdminProduct } from "../../admin/products";
 
-export type ProductStatus = "Aktif" | "Nonaktif";
-
-export type AdminProduct = {
-  id: number;
-  name: string;
-  seller: string;
-  category: string;
-  price: number;
-  stock: number;
-  status: ProductStatus;
-  description: string;
-  isNew?: boolean;
-};
-
-export const SELLER_OPTIONS = [
-  "Alwan",
-  "Ismi",
-  "Intan",
-  "Budi",
-  "Novita",
-  "Ghofuur",
-  "Kaji Ecoprint",
-  "Penjual Siswa",
-];
-
-export const CATEGORY_OPTIONS = [
-  "Makanan",
-  "Minuman",
-  "Fashion",
-  "ATK",
-  "Kerajinan",
-  "Lainnya",
-];
-
-export const initialAdminProducts: AdminProduct[] = [
+/**
+ * Produk contoh untuk panel admin.
+ *
+ * TODO(backend): hapus setelah GET /admin/products tersedia.
+ */
+export const ADMIN_PRODUCT_MOCKS: AdminProduct[] = [
   {
     id: 1,
     name: "Tote Bag Batik",

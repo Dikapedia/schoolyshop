@@ -240,6 +240,7 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* Titik asal */}
+                {/* TODO(backend): titik asal, berat paket, dan tarif masih statis; ambil dari GET /shipping/rates. */}
                 <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
                   <div className="flex items-center gap-2">
                     <span className="grid h-9 w-9 place-items-center rounded-lg bg-blue-100 text-blue-600">

@@ -97,6 +97,7 @@ export default function PesananPage() {
                       <span className="text-xs text-slate-500">{new Date(order.date).toLocaleString()}</span>
                     </div>
                     <div className="flex items-center gap-2">
+                      {/* TODO(backend): metode bayar dan status lunas masih statis per pesanan. */}
                       <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
                         Lunas - Virtual Account BCA
                       </span>
@@ -113,6 +114,7 @@ export default function PesananPage() {
                       </div>
                       <div>
                         <p className="font-bold text-sm text-slate-900">{order.items[0]?.name}</p>
+                        {/* TODO(backend): info penjual masih statis; ambil dari relasi order item. */}
                         <p className="mt-0.5 text-xs text-slate-500">
                           <span className="font-medium text-slate-700">Bu Siti Aminah, M.Pd.</span> • Guru (NIP Terverifikasi)
                         </p>

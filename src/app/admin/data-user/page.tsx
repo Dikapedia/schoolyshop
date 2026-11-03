@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ADMIN_USERS, formatUserDate } from "@/lib/shop/admin-users";
+import { formatUserDate, getAdminUsers } from "@/api/admin/users";
 
 const PAGE_SIZE = 10;
+const ADMIN_USERS = getAdminUsers();
 
 export default function DataUserPage() {
   const [query, setQuery] = useState("");

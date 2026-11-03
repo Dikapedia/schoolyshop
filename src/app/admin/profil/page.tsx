@@ -26,6 +26,7 @@ export default function AdminProfilPage() {
   const [passwordLama, setPasswordLama] = useState("");
   const [passwordBaru, setPasswordBaru] = useState("");
   const [konfirmasiPassword, setKonfirmasiPassword] = useState("");
+  // TODO(backend): data sekolah masih statis dan perlu endpoint PATCH /admin/settings.
   const [schoolName, setSchoolName] = useState<string>(site.school);
   const [schoolAddress, setSchoolAddress] = useState<string>("Jl. Pendidikan No. 1, Jakarta");
   const [schoolPhone, setSchoolPhone] = useState<string>("+62 21 1234 5678");

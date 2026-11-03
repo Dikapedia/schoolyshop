@@ -11,11 +11,15 @@ import {
   TruckIcon,
 } from "@/components/icons";
 import {
-  ADMIN_RETURNS,
+  getAdminReturns,
+  getAdminReturnStatusCounts,
   getReturnStatusTone,
   RETURN_STATUS_OPTIONS,
   type ReturnStatus,
-} from "@/lib/shop/admin-returns";
+} from "@/api/admin/returns";
+
+const ADMIN_RETURNS = getAdminReturns();
+const RETURN_STATUS_COUNTS = getAdminReturnStatusCounts();
 
 function HourglassIcon({ className }: { className?: string }) {
   return (
@@ -37,7 +41,7 @@ function RefreshIcon({ className }: { className?: string }) {
 const STATUS_STYLES = [
   {
     label: "Menunggu Persetujuan",
-    value: "1",
+    value: String(RETURN_STATUS_COUNTS["Menunggu Persetujuan"]),
     description: "Perlu tindakan verifikasi segera",
     tone: "border-t-orange-400",
     descriptionClass: "text-orange-500",
@@ -46,7 +50,7 @@ const STATUS_STYLES = [
   },
   {
     label: "Menunggu Barang Kembali",
-    value: "1",
+    value: String(RETURN_STATUS_COUNTS["Menunggu Barang Kembali"]),
     description: "Dalam pengiriman oleh kurir",
     tone: "border-t-blue-400",
     descriptionClass: "text-blue-600",
@@ -55,7 +59,7 @@ const STATUS_STYLES = [
   },
   {
     label: "Pengembalian Diproses",
-    value: "1",
+    value: String(RETURN_STATUS_COUNTS["Pengembalian Diproses"]),
     description: "Proses refund dana / tukar stok",
     tone: "border-t-purple-400",
     descriptionClass: "text-purple-600",
@@ -64,7 +68,7 @@ const STATUS_STYLES = [
   },
   {
     label: "Pengembalian Selesai",
-    value: "2",
+    value: String(RETURN_STATUS_COUNTS["Pengembalian Selesai"]),
     description: "Kasus berhasil ditutup",
     tone: "border-t-emerald-400",
     descriptionClass: "text-emerald-600",

@@ -6,7 +6,7 @@ import { useState } from "react";
 import {
   formatRupiah,
   getSellerReportDetail,
-} from "@/lib/shop/admin-sales-report";
+} from "@/api/admin/sales-report";
 
 function DownloadIcon() {
   return (

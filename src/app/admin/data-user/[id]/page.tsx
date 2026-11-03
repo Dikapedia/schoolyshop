@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ADMIN_USERS, formatUserDate } from "@/lib/shop/admin-users";
+import { formatUserDate, getAdminUsers } from "@/api/admin/users";
+
+const ADMIN_USERS = getAdminUsers();
 
 function getInitials(name: string) {
   return name

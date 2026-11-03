@@ -3,52 +3,12 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { CheckIcon, ChevronLeftIcon, TruckIcon } from "@/components/icons";
-import { getAdminShipmentDetail } from "@/lib/shop/admin-shipments";
+import {
+  getAdminShipmentDetail,
+  getAdminShipmentTracking,
+} from "@/api/admin/shipments";
 
 type StepState = "done" | "active" | "pending";
-
-type TrackingStep = {
-  title: string;
-  time: string;
-  description: string;
-  state: StepState;
-  badge: string;
-};
-
-const TRACKING_STEPS: TrackingStep[] = [
-  {
-    title: "Pengiriman berhasil dibuat",
-    time: "14 Oktober 2026, 14:30 WIB",
-    description:
-      "Pengiriman ORD-001 telah berhasil dikonfirmasi dan tiket resi kurir JT8829103841 diterbitkan.",
-    state: "done",
-    badge: "Selesai",
-  },
-  {
-    title: "Paket dijemput kurir dari Semarang",
-    time: "14 Oktober 2026, 17:15 WIB",
-    description:
-      "Paket telah diserahkan kepada kurir J&T Express di Hub Logistik Semarang dan dipersiapkan untuk perjalanan antar-kota.",
-    state: "done",
-    badge: "Selesai",
-  },
-  {
-    title: "Paket dalam perjalanan menuju kota tujuan",
-    time: "15 Oktober 2026, 08:20 WIB",
-    description:
-      "Paket tiba di Transit Hub Jakarta dan sedang dijadwalkan untuk pengantaran ke tujuan (Jakarta Selatan).",
-    state: "active",
-    badge: "Sedang berlangsung",
-  },
-  {
-    title: "Paket diterima pembeli",
-    time: "Estimasi 16 Oktober 2026",
-    description:
-      "Paket belum diterima oleh Budi Santoso. Menunggu proses pengantaran kurir ke alamat tujuan.",
-    state: "pending",
-    badge: "Menunggu",
-  },
-];
 
 function RefreshIcon({ className }: { className?: string }) {
   return (
@@ -117,14 +77,15 @@ export default function PelacakanPengirimanPage() {
     );
   }
 
-  const steps = TRACKING_STEPS.map((step, index) => {
+  const trackingSteps = getAdminShipmentTracking(detail.id);
+  const steps = trackingSteps.map((step, index) => {
     if (index === 0) {
       return {
         ...step,
         description: `Pengiriman ${detail.id} telah berhasil dikonfirmasi dan tiket resi kurir ${detail.trackingNumber} diterbitkan.`,
       };
     }
-    if (index === TRACKING_STEPS.length - 1) {
+    if (index === trackingSteps.length - 1) {
       return {
         ...step,
         description: `Paket belum diterima oleh ${detail.recipient}. Menunggu proses pengantaran kurir ke alamat tujuan.`,

@@ -160,6 +160,7 @@ export default function PembayaranPage() {
               </div>
 
               {/* Metode Pembayaran */}
+              {/* TODO(backend): daftar bank, nomor VA, dan status pembayaran masih statis; ambil dari POST /payments. */}
               <p className="mb-3 text-sm font-bold">Pilih Metode Pembayaran</p>
               <div className="space-y-3">
                 {/* Transfer Bank (default open) */}
