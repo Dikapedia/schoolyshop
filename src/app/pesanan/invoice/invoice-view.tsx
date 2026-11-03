@@ -7,23 +7,9 @@ import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { formatRupiah } from "@/lib/format";
 import { useSession } from "@/api/auth";
+import { listOrders, type Order } from "@/api/orders";
 import { useSearchParams } from "next/navigation";
 import { site } from "@/lib/site";
-
-type OrderItem = {
-  productId: string;
-  name: string;
-  qty: number;
-  price: number;
-};
-
-type Order = {
-  id: string;
-  date: string;
-  items: OrderItem[];
-  total: number;
-  status: string;
-};
 
 const INVOICE_ACTIONS = [
   { label: "Cetak", action: "print", icon: "🖨️" },
@@ -51,26 +37,19 @@ export default function InvoiceView() {
       setLoading(false);
       return;
     }
-    try {
-      const raw = window.localStorage.getItem("schooly.orders");
-      if (!raw) {
-        setError("Belum ada riwayat pesanan.");
-        setLoading(false);
-        return;
-      }
-      const all: Record<string, Order[]> = JSON.parse(raw);
-      const list = all[session.id] ?? [];
-      const found = list.find((o: Order) => o.id === id);
-      if (!found) {
-        setError("Pesanan tidak ditemukan.");
-      } else {
-        setOrder(found);
-      }
-    } catch {
-      setError("Gagal membaca data pesanan.");
-    } finally {
+    const list = listOrders(session.id);
+    if (list === null) {
+      setError("Belum ada riwayat pesanan.");
       setLoading(false);
+      return;
     }
+    const found = list.find((item: Order) => item.id === id);
+    if (!found) {
+      setError("Pesanan tidak ditemukan.");
+    } else {
+      setOrder(found);
+    }
+    setLoading(false);
   }, [session, router]);
 
   if (!session) return null;

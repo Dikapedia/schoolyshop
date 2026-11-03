@@ -6,32 +6,13 @@ import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { formatRupiah } from "@/lib/format";
 import { useSession } from "@/api/auth";
+import {
+  listOrders,
+  ORDER_TABS,
+  type Order,
+} from "@/api/orders";
 import { useRouter } from "next/navigation";
 import { site } from "@/lib/site";
-
-type OrderItem = {
-  productId: string;
-  name: string;
-  qty: number;
-  price: number;
-};
-
-type Order = {
-  id: string;
-  date: string;
-  items: OrderItem[];
-  total: number;
-  status: "Menunggu Pembayaran" | "Diproses" | "Dikirim" | "Dalam Pengembalian" | "Selesai";
-};
-
-const TABS = [
-  { label: "Semua", value: "Semua" },
-  { label: "Menunggu Pembayaran", value: "Menunggu Pembayaran" },
-  { label: "Diproses", value: "Diproses" },
-  { label: "Dikirim", value: "Dikirim" },
-  { label: "Dalam Pengembalian", value: "Dalam Pengembalian" },
-  { label: "Selesai", value: "Selesai" },
-] as const;
 
 export default function PesananPage() {
   const router = useRouter();
@@ -44,13 +25,7 @@ export default function PesananPage() {
       router.replace("/login?next=/pesanan");
       return;
     }
-    try {
-      const raw = window.localStorage.getItem("schooly.orders");
-      const all: Record<string, Order[]> = raw ? JSON.parse(raw) : {};
-      setOrders(all[session.id] ?? []);
-    } catch {
-      setOrders([]);
-    }
+    setOrders(listOrders(session.id) ?? []);
   }, [session, router]);
 
   if (!session) return null;
@@ -86,7 +61,7 @@ export default function PesananPage() {
 
           {/* Tabs */}
           <div className="mb-6 flex flex-wrap items-center gap-2 border-b border-slate-200 pb-4">
-            {TABS.map((tab) => {
+            {ORDER_TABS.map((tab) => {
               const isActive = activeTab === tab.value;
               const count = orders.filter((o) => tab.value === "Semua" || o.status === tab.value).length;
               return (

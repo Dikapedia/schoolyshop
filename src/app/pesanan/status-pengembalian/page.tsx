@@ -6,12 +6,10 @@ import { inter } from "@/lib/fonts";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { useSession } from "@/api/auth";
-
-type ReturnRequest = {
-  orderId: string;
-  items: { productId: string; name: string; qty: number; reason: string }[];
-  submittedAt: string;
-};
+import {
+  listReturns,
+  type ReturnRequest,
+} from "@/api/returns";
 
 export default function ReturnStatusPage() {
   const router = useRouter();
@@ -25,19 +23,13 @@ export default function ReturnStatusPage() {
       router.replace("/login?next=/pesanan/status-pengembalian");
       return;
     }
-    try {
-      const raw = window.localStorage.getItem("schooly.returns");
-      if (!raw) {
-        setReturns([]);
-      } else {
-        const all: Record<string, ReturnRequest[]> = JSON.parse(raw);
-        setReturns(all[session.id] ?? []);
-      }
-    } catch {
+    const data = listReturns(session.id);
+    if (data === null) {
       setError("Gagal memuat data pengembalian.");
-    } finally {
-      setLoading(false);
+    } else {
+      setReturns(data);
     }
+    setLoading(false);
   }, [session, router]);
 
   if (!session) return null;

@@ -15,12 +15,14 @@ export function readRaw(key: string): string | null {
   }
 }
 
-export function writeRaw(key: string, value: string): void {
-  if (typeof window === "undefined") return;
+export function writeRaw(key: string, value: string): boolean {
+  if (typeof window === "undefined") return false;
   try {
     window.localStorage.setItem(key, value);
+    return true;
   } catch {
     // Penyimpanan tidak tersedia; perilaku lama juga mengabaikan error ini.
+    return false;
   }
 }
 
@@ -43,8 +45,8 @@ export function readJson<T>(key: string, fallback: T): T {
   }
 }
 
-export function writeJson(key: string, value: unknown): void {
-  writeRaw(key, JSON.stringify(value));
+export function writeJson(key: string, value: unknown): boolean {
+  return writeRaw(key, JSON.stringify(value));
 }
 
 /**

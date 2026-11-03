@@ -2,20 +2,17 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useSession } from "@/api/auth";
-import { saveSession, clearSession } from "@/api/auth";
+import {
+  changePassword,
+  clearSession,
+  saveSession,
+  useSession,
+} from "@/api/auth";
+import { getApiErrorMessage } from "@/api/errors";
+import { saveProfilePhone } from "@/api/users";
 
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
-
-type StoredUser = {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-  role: string;
-  active: boolean;
-};
 
 export default function ProfilPage() {
   const session = useSession();
@@ -57,9 +54,7 @@ export default function ProfilPage() {
 
   useEffect(() => {
     if (!mounted || !session) return;
-    try {
-      window.localStorage.setItem("schooly.phone", phone.join(""));
-    } catch {}
+    saveProfilePhone(phone);
   }, [phone, mounted, session]);
 
   const displayPhone = "+62" + phone.join("");
@@ -461,18 +456,16 @@ export default function ProfilPage() {
                           setError("Konfirmasi kata sandi tidak cocup.");
                           return;
                         }
-                        // Verify old password matches current user
-                        const users: StoredUser[] = JSON.parse(localStorage.getItem("schooly.mock.users") || "[]");
-                        const user = users.find((u) => u.id === session?.id);
-                        if (!user || user.password !== passwordLama) {
-                          setError("Kata sandi lama tidak sesuai.");
+                        try {
+                          changePassword({
+                            userId: session?.id ?? "",
+                            currentPassword: passwordLama,
+                            newPassword: passwordBaru,
+                          });
+                        } catch (error) {
+                          setError(getApiErrorMessage(error));
                           return;
                         }
-                        // Update password for current user in mock storage
-                        const updated = users.map((u) =>
-                          u.id === session?.id ? { ...u, password: passwordBaru } : u
-                        );
-                        localStorage.setItem("schooly.mock.users", JSON.stringify(updated));
                         setPasswordLama("");
                         setPasswordBaru("");
                         setKonfirmasiPassword("");
