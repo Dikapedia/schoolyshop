@@ -9,7 +9,7 @@ import SiteFooter from "@/components/shop/SiteFooter";
 import { useSession } from "@/api/auth";
 import { formatRupiah } from "@/lib/format";
 import { useCart } from "@/lib/shop/cart";
-import { getProductById } from "@/lib/shop/products";
+import { getProductById } from "@/api/products";
 
 type Address = {
   id: string;

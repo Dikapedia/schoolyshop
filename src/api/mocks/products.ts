@@ -1,33 +1,6 @@
-// DATA CONTOH. Ganti dengan data dari API backend saat sudah tersedia.
-// Foto: isi `image` dengan path di folder public, misalnya "/products/batik.jpg".
-// Tanpa `image`, kartu menampilkan kotak abu-abu pengganti.
+import type { Product } from "../products";
 
-export const CATEGORIES = [
-  "Pakaian Sekolah",
-  "Alat Tulis",
-  "Kerajinan",
-  "Perlengkapan Sekolah",
-  "Makanan",
-  "Minuman",
-  "Lainnya",
-] as const;
-
-export type Category = (typeof CATEGORIES)[number];
-export type SellerRole = "Guru" | "Siswa" | "Karyawan";
-
-export type Product = {
-  id: string;
-  slug: string;
-  name: string;
-  category: Category;
-  price: number; // Rupiah
-  tag: string; // label kecil di pojok foto
-  seller: { label: string; role: SellerRole };
-  image?: string;
-  description?: string; // deskripsi panjang (opsional)
-};
-
-export const products: Product[] = [
+export const PRODUCT_MOCKS: Product[] = [
   {
     id: "p1",
     slug: "seragam-batik-sekolah-resmi",
@@ -293,25 +266,3 @@ export const products: Product[] = [
       "Es teh manis klasik dalam botol 300 ml. Disaring dari teh melati pilihan, manisnya pas dan menyegarkan. Laris untuk teman makan siang.",
   },
 ];
-
-/** Cari satu produk berdasarkan slug. */
-export function getProductBySlug(slug: string): Product | undefined {
-  return products.find((p) => p.slug === slug);
-}
-
-/** Cari satu produk berdasarkan ID. */
-export function getProductById(id: string): Product | undefined {
-  return products.find((p) => p.id === id);
-}
-
-/** Produk lain di kategori yang sama (maksimal `limit`). */
-export function getRelatedProducts(product: Product, limit = 4): Product[] {
-  const sameCategory = products.filter(
-    (p) => p.category === product.category && p.id !== product.id,
-  );
-  if (sameCategory.length >= limit) return sameCategory.slice(0, limit);
-  const others = products.filter(
-    (p) => p.category !== product.category && p.id !== product.id,
-  );
-  return [...sameCategory, ...others].slice(0, limit);
-}

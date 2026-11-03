@@ -4,13 +4,13 @@ import ProductDetail from "@/components/shop/ProductDetail";
 import {
   getProductBySlug,
   getRelatedProducts,
-  products,
-} from "@/lib/shop/products";
+  listProducts,
+} from "@/api/products";
 
 type Params = { slug: string };
 
 export function generateStaticParams(): Params[] {
-  return products.map((p) => ({ slug: p.slug }));
+  return listProducts().map((product) => ({ slug: product.slug }));
 }
 
 export async function generateMetadata({

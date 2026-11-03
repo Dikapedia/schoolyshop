@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronRightIcon } from "@/components/icons";
 import { cx } from "@/lib/cx";
-import { CATEGORIES, products, type Category } from "@/lib/shop/products";
+import { CATEGORIES, listProducts, type Category } from "@/api/products";
 import ProductCard from "./ProductCard";
 
 const SORTS = [
@@ -17,6 +17,7 @@ type SortValue = (typeof SORTS)[number]["value"];
 type Filter = "Semua" | Category;
 
 const FILTERS: Filter[] = ["Semua", ...CATEGORIES];
+const products = listProducts();
 
 export default function ProductSection() {
   const [filter, setFilter] = useState<Filter>("Semua");

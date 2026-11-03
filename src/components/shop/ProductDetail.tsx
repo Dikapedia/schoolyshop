@@ -9,7 +9,7 @@ import { cx } from "@/lib/cx";
 import { inter } from "@/lib/fonts";
 import { formatRupiah } from "@/lib/format";
 import { addToCartWithAuth } from "@/lib/shop/cart";
-import type { Product } from "@/lib/shop/products";
+import type { Product } from "@/api/products";
 import { site, whatsappLink } from "@/lib/site";
 import SiteFooter from "./SiteFooter";
 import SiteHeader from "./SiteHeader";
