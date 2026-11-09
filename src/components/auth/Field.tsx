@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type InputHTMLAttributes, type ReactNode } from "react";
+import { useState, type InputHTMLAttributes, type ReactNode } from "react";
 import { cx } from "@/lib/cx";
 import { EyeIcon, EyeOffIcon, LockIcon } from "@/components/icons";
 
@@ -24,12 +24,12 @@ export function Field({
   trailing,
   hint,
   id,
+  name,
   className,
   ...inputProps
 }: FieldProps) {
-  const autoId = useId();
-  const inputId = id ?? autoId;
-  const errorId = `${inputId}-error`;
+  const inputId = id ?? (name ? `field-${name}` : undefined);
+  const errorId = inputId ? `${inputId}-error` : undefined;
 
   return (
     <div>
@@ -56,8 +56,9 @@ export function Field({
         )}
         <input
           id={inputId}
+          name={name}
           aria-invalid={error ? true : undefined}
-          aria-describedby={error ? errorId : undefined}
+          aria-describedby={error && errorId ? errorId : undefined}
           className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
           {...inputProps}
         />

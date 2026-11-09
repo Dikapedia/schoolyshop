@@ -9,28 +9,23 @@ import {
   useSession,
 } from "@/api/auth";
 import { getApiErrorMessage } from "@/api/errors";
-import { saveProfilePhone } from "@/api/users";
+import { getProfilePhone, saveProfilePhone } from "@/api/users";
 
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 
 export default function ProfilPage() {
   const session = useSession();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const sessionRef = useRef(session);
   useEffect(() => {
     sessionRef.current = session;
   }, [session]);
 
-  if (!mounted) return null;
-
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState<string[]>([]);
+    const [phone, setPhone] = useState<string[]>([]);
+  const [phoneInitialized, setPhoneInitialized] = useState(false);
   const [passwordLama, setPasswordLama] = useState("");
   const [passwordBaru, setPasswordBaru] = useState("");
   const [konfirmasiPassword, setKonfirmasiPassword] = useState("");
@@ -52,12 +47,25 @@ export default function ProfilPage() {
     saveSession(updated, true);
   }, [name, email]);
 
+  // Muat nomor HP yang tersimpan (jika ada) saat halaman siap
   useEffect(() => {
-    if (!mounted || !session) return;
-    saveProfilePhone(phone);
-  }, [phone, mounted, session]);
+    if (session && !phoneInitialized) {
+      const raw = getProfilePhone();
+      // raw berisi string tanpa prefix "62"; split menjadi array digit
+      const digits = raw.replace(/\D/g, "").split("");
+      setPhone(digits);
+      setPhoneInitialized(true);
+    }
+  }, [session, phoneInitialized]);
 
-  const displayPhone = "+62" + phone.join("");
+  // Simpan nomor HP saat berubah (hanya setelah sudah dimuat)
+  useEffect(() => {
+    if (phoneInitialized && phone.length > 0) {
+      saveProfilePhone(phone);
+    }
+  }, [phone, phoneInitialized]);
+
+  const displayPhone = phone.length ? "+62" + phone.join("") : "";
 
   if (!session) {
     return (
@@ -106,8 +114,14 @@ export default function ProfilPage() {
       return;
     }
 
-    if (passwordBaru && passwordBaru.length < 6) {
-      setError("Kata sandi minimal 6 karakter");
+    if (passwordBaru && passwordBaru.length < 8) {
+      setError("Kata sandi minimal 8 karakter");
+      setLoading(false);
+      return;
+    }
+
+    if (passwordBaru && !passwordLama.trim()) {
+      setError("Kata sandi lama wajib diisi.");
       setLoading(false);
       return;
     }
@@ -121,7 +135,22 @@ export default function ProfilPage() {
         };
         saveSession(updated, true);
       }
-      setSuccess("Profil berhasil diperbarui");
+
+      if (passwordBaru) {
+        try {
+          changePassword({
+            userId: session?.id ?? "",
+            currentPassword: passwordLama,
+            newPassword: passwordBaru,
+          });
+        } catch (err) {
+          setError(getApiErrorMessage(err));
+          setLoading(false);
+          return;
+        }
+      }
+
+      setSuccess("Profil berhasil diperbarui.");
       setPasswordLama("");
       setPasswordBaru("");
       setKonfirmasiPassword("");
@@ -454,7 +483,7 @@ export default function ProfilPage() {
                           return;
                         }
                         if (passwordBaru !== konfirmasiPassword) {
-                          setError("Konfirmasi kata sandi tidak cocup.");
+                          setError("Konfirmasi kata sandi tidak cocok.");
                           return;
                         }
                         try {

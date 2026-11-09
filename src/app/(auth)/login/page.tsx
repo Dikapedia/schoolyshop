@@ -44,6 +44,7 @@ async function LoginFormWithParams({
     <LoginForm
       nextPath={safeNextPath(next)}
       justRegistered={params.registered === "1"}
+      justReset={params.reset === "1"}
     />
   );
 }

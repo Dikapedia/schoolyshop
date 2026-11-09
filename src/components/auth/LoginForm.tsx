@@ -16,9 +16,15 @@ type Props = {
   nextPath: string;
   /** True bila baru saja selesai registrasi. */
   justRegistered: boolean;
+  /** True bila baru saja mengatur ulang kata sandi. */
+  justReset: boolean;
 };
 
-export default function LoginForm({ nextPath, justRegistered }: Props) {
+export default function LoginForm({
+  nextPath,
+  justRegistered,
+  justReset,
+}: Props) {
   const router = useRouter();
   const [values, setValues] = useState({ email: "", password: "" });
   const [remember, setRemember] = useState(false);
@@ -80,6 +86,12 @@ export default function LoginForm({ nextPath, justRegistered }: Props) {
           Registrasi berhasil. Silakan masuk dengan akun Anda.
         </FormAlert>
       )}
+      {justReset && !formError && (
+        <FormAlert variant="success">
+          Kata sandi berhasil direset. Silakan masuk dengan kata sandi baru
+          Anda.
+        </FormAlert>
+      )}
       {formError && <FormAlert variant="error">{formError}</FormAlert>}
 
       <Field
@@ -117,7 +129,6 @@ export default function LoginForm({ nextPath, justRegistered }: Props) {
           />
           Ingat saya
         </label>
-        {/* Halaman /lupa-sandi belum dibuat. */}
         <Link
           href="/lupa-sandi"
           className="text-sm font-semibold text-blue-600 hover:text-blue-700"

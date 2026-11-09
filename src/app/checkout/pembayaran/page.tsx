@@ -17,8 +17,32 @@ import {
 import { formatRupiah } from "@/lib/format";
 import { useCart } from "@/api/cart";
 import { getProductById } from "@/api/products";
+import { listPaymentBanks } from "@/api/payments";
 
 const SHIPPING_OPTIONS = listShippingOptions();
+const PAYMENT_BANKS = listPaymentBanks();
+
+const BANK_BADGE_STYLES: Record<string, string> = {
+  bca: "bg-blue-600",
+  bni: "bg-orange-500",
+  mandiri: "bg-sky-900",
+  bri: "bg-indigo-800",
+  bsi: "bg-teal-600",
+  btn: "bg-blue-800",
+  cimb: "bg-red-600",
+  permata: "bg-emerald-600",
+};
+
+const BANK_BADGE_LABELS: Record<string, string> = {
+  bca: "BCA",
+  bni: "BNI",
+  mandiri: "MDR",
+  bri: "BRI",
+  bsi: "BSI",
+  btn: "BTN",
+  cimb: "CIMB",
+  permata: "PRMT",
+};
 
 export default function PembayaranPage() {
   const router = useRouter();
@@ -30,6 +54,9 @@ export default function PembayaranPage() {
   const [selectedAddress, setSelectedAddress] = useState<string>("");
   const [shipping, setShipping] = useState<string>("");
   const [countdown, setCountdown] = useState(3582);
+  const [selectedBankId, setSelectedBankId] = useState<string>(
+    PAYMENT_BANKS[0]?.id ?? "",
+  );
 
   useEffect(() => {
     if (!session) {
@@ -67,6 +94,8 @@ export default function PembayaranPage() {
   const selectedShippingData = SHIPPING_OPTIONS.find((s) => s.id === shipping);
   const shippingFee = selectedShippingData?.fee ?? 0;
   const total = subtotal + shippingFee;
+  const selectedBank =
+    PAYMENT_BANKS.find((bank) => bank.id === selectedBankId) ?? PAYMENT_BANKS[0];
   const [invoiceId, setInvoiceId] = useState<string>("");
 
   useEffect(() => {
@@ -86,7 +115,7 @@ export default function PembayaranPage() {
   if (!pending) return null;
 
   function handleCopy() {
-    navigator.clipboard?.writeText("8801 2025 0101 001");
+    if (selectedBank) navigator.clipboard?.writeText(selectedBank.vaNumber);
   }
 
   return (
@@ -169,21 +198,55 @@ export default function PembayaranPage() {
                     <input type="radio" name="payment" defaultChecked className="accent-blue-600" />
                     <div className="flex-1 font-bold text-sm">Transfer Bank / Virtual Account (Otomatis)</div>
                     <div className="flex gap-1">
-                      {["BCA","BNI","Mandiri"].map((b) => (
-                        <span key={b} className="rounded bg-white px-2 py-0.5 text-[10px] font-bold text-blue-700">{b}</span>
+                      {PAYMENT_BANKS.slice(0, 3).map((bank) => (
+                        <span key={bank.id} className="rounded bg-white px-2 py-0.5 text-[10px] font-bold text-blue-700">{bank.name}</span>
                       ))}
+                      {PAYMENT_BANKS.length > 3 && (
+                        <span className="rounded bg-white px-2 py-0.5 text-[10px] font-bold text-blue-700">+{PAYMENT_BANKS.length - 3}</span>
+                      )}
                     </div>
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
                     </svg>
                   </label>
                   <div className="mt-3 rounded-lg bg-white p-3">
-                    <div className="flex items-center justify-between">
+                    <p className="mb-2 text-[11px] font-semibold text-slate-600">Pilih Bank Virtual Account</p>
+                    <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {PAYMENT_BANKS.map((bank) => {
+                        const active = bank.id === selectedBank.id;
+                        return (
+                          <button
+                            key={bank.id}
+                            type="button"
+                            onClick={() => setSelectedBankId(bank.id)}
+                            aria-pressed={active}
+                            className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition ${
+                              active
+                                ? "border-blue-500 bg-blue-50 ring-1 ring-blue-500"
+                                : "border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50"
+                            }`}
+                          >
+                            <span className={`grid h-7 w-7 shrink-0 place-items-center rounded text-[9px] font-bold text-white ${BANK_BADGE_STYLES[bank.id] ?? "bg-slate-600"}`}>
+                              {BANK_BADGE_LABELS[bank.id] ?? bank.name}
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block truncate text-[11px] font-bold text-slate-900">{bank.name}</span>
+                              <span className={`block text-[9px] ${active ? "text-blue-700" : "text-slate-500"}`}>
+                                {active ? "Dipilih" : "Virtual Account"}
+                              </span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex items-center justify-between border-t border-slate-100 pt-3">
                       <div className="flex items-center gap-3">
-                        <span className="grid h-9 w-9 place-items-center rounded bg-blue-600 text-[10px] font-bold text-white">BCA</span>
+                        <span className={`grid h-9 w-9 place-items-center rounded text-[9px] font-bold text-white ${BANK_BADGE_STYLES[selectedBank.id] ?? "bg-slate-600"}`}>
+                          {BANK_BADGE_LABELS[selectedBank.id] ?? selectedBank.name}
+                        </span>
                         <div>
-                          <p className="text-[11px] text-slate-500">BCA Virtual Account ({site.school})</p>
-                          <p className="font-mono font-bold">8801 2025 0101 001</p>
+                          <p className="text-[11px] text-slate-500">{selectedBank.name} Virtual Account ({site.school})</p>
+                          <p className="font-mono font-bold">{selectedBank.vaNumber}</p>
                         </div>
                       </div>
                       <button onClick={handleCopy} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700">Salin No. VA</button>
