@@ -2,6 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { forgotPassword } from "@/api/auth";
+import { getApiErrorMessage } from "@/api/errors";
 import { validateEmail } from "@/lib/auth/validation";
 import { Field } from "./Field";
 import { FormAlert, SubmitButton } from "./FormParts";
@@ -13,6 +15,7 @@ export default function ForgotPasswordForm() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const emailError = validateEmail(email);
   const visibleError = submitted || touched ? emailError : undefined;
@@ -23,10 +26,15 @@ export default function ForgotPasswordForm() {
     if (emailError) return;
 
     setSubmitting(true);
-    // TODO(backend): ganti simulasi ini dengan POST /auth/forgot-password { email }.
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    setSubmitting(false);
-    setSent(true);
+    setFormError(null);
+    try {
+      await forgotPassword({ email: email.trim() });
+      setSent(true);
+    } catch (error) {
+      setFormError(getApiErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (sent) {
@@ -49,6 +57,8 @@ export default function ForgotPasswordForm() {
 
   return (
     <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-5">
+      {formError && <FormAlert variant="error">{formError}</FormAlert>}
+
       <Field
         label="Email"
         name="email"
