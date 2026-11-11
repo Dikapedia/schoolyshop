@@ -1,7 +1,9 @@
 # Kebutuhan Frontend terhadap Backend
 
 Dokumen ini adalah hasil agregasi kontrak API dan penanda `TODO(backend)` dari
-refactor frontend pada issue [#3](https://github.com/Dikapedia/schoolyshop/issues/3).
+refactor frontend pada issue [#3](https://github.com/Dikapedia/schoolyshop/issues/3)
+dan integrasi alur lupa/reset kata sandi pada issue
+[#5](https://github.com/Dikapedia/schoolyshop/issues/5).
 Isinya menjadi acuan diskusi dengan tim backend; belum ada endpoint yang
 diimplementasikan di backend pada refactor ini.
 
@@ -19,7 +21,13 @@ diimplementasikan di backend pada refactor ini.
 - Frontend saat ini menyimpan sesi di `localStorage`/`sessionStorage`.
 - Backend disarankan memakai cookie `httpOnly` + endpoint `GET /auth/me`.
 - Endpoint yang dibutuhkan: `POST /auth/login`, `POST /auth/register`,
-  `POST /auth/logout`, `GET /auth/me`, `PATCH /users/me/password`.
+  `POST /auth/logout`, `GET /auth/me`, `PATCH /users/me/password`,
+  `POST /auth/forgot-password`, `POST /auth/reset-password`.
+- Token reset sebaiknya opaque, berumur pendek, sekali pakai, dan tidak
+  membocorkan apakah email terdaftar. Respons `POST /auth/forgot-password`
+  harus selalu terlihat berhasil. `TODO(backend)`: tentukan masa berlaku
+  token, status error untuk token kedaluwarsa (404/410/422), dan rate-limit
+  (mis. 429 + `Retry-After`).
 
 ### Format error
 
@@ -64,7 +72,7 @@ menyediakan query parameter yang konsisten, misalnya:
 
 | Domain | Endpoint utama |
 | --- | --- |
-| Auth | `POST /auth/login`, `POST /auth/register`, `POST /auth/logout`, `GET /auth/me`, `PATCH /users/me/password` |
+| Auth | `POST /auth/login`, `POST /auth/register`, `POST /auth/logout`, `GET /auth/me`, `PATCH /users/me/password`, `POST /auth/forgot-password`, `POST /auth/reset-password` |
 | Produk | `GET /products`, `GET /products/:slug`, `GET /products/:id/related` |
 | Keranjang | `GET /cart`, `POST /cart/items`, `PATCH /cart/items/:productId`, `DELETE /cart/items/:productId`, `DELETE /cart` |
 | Alamat | `GET /users/me/addresses`, `POST /users/me/addresses`, `PATCH /users/me/addresses/:id`, `DELETE /users/me/addresses/:id` |
@@ -130,6 +138,32 @@ menyediakan query parameter yang konsisten, misalnya:
 - **Endpoint:** `POST /auth/login`, `POST /auth/register`.
 - **TODO(backend):** kontrak respons login diasumsikan `{ id, name, email,
   role }`. Konfirmasi apakah backend mengirim token, cookie, atau keduanya.
+
+#### `/lupa-sandi`
+
+- **Data:** email akun.
+- **Aksi:** kirim permintaan instruksi reset.
+- **Endpoint:** `POST /auth/forgot-password` dengan body `{ email }`.
+- **Perilaku UI:** pesan sukses selalu sama, yaitu "Jika email terdaftar,
+  instruksi reset kata sandi telah dikirim. Periksa kotak masuk Anda." Jangan
+  bedakan respons untuk email terdaftar dan tidak terdaftar.
+- **TODO(backend):** tentukan rate-limit per email/IP, masa berlaku token,
+  apakah token sekali pakai, template email, dan apakah endpoint mengembalikan
+  `204` atau body JSON. Frontend saat ini menganggap respons sukses tanpa body.
+
+#### `/reset-sandi?token=...`
+
+- **Data:** token dari query string dan kata sandi baru.
+- **Aksi:** atur ulang kata sandi, lalu masuk dengan kata sandi baru.
+- **Endpoint:** `POST /auth/reset-password` dengan body `{ token, password }`.
+- **Perilaku UI:** tanpa `token`, halaman langsung menampilkan "Tautan reset
+  tidak valid atau tidak lengkap." Token tidak valid/kedaluwarsa dari backend
+  (404/422) ditampilkan sebagai "Tautan reset tidak valid atau sudah
+  kedaluwarsa. Silakan minta tautan baru."
+- **TODO(backend):** konfirmasi format token (opaque/JWT), masa berlaku,
+  single-use, aturan password (minimal 8 karakter di UI), dan apakah semua
+  sesi lama dicabut setelah reset. Tidak ada environment variable baru;
+  frontend memakai `NEXT_PUBLIC_API_URL` dan `NEXT_PUBLIC_USE_MOCK_AUTH`.
 
 #### `/kebijakan-privasi`, `/syarat-ketentuan`, `/profil/bantuan`
 

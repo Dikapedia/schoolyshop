@@ -2,6 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { resetPassword } from "@/api/auth";
+import { getApiErrorMessage } from "@/api/errors";
 import { PasswordField } from "./Field";
 import { FormAlert, PasswordStrength, SubmitButton } from "./FormParts";
 
@@ -19,6 +21,7 @@ export default function ResetPasswordForm({ token }: Props) {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const errors = {
     password: !password
@@ -42,10 +45,15 @@ export default function ResetPasswordForm({ token }: Props) {
     if (errors.password || errors.confirm) return;
 
     setSubmitting(true);
-    // TODO(backend): ganti simulasi ini dengan POST /auth/reset-password { token, password }.
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    setSubmitting(false);
-    setDone(true);
+    setFormError(null);
+    try {
+      await resetPassword({ token, password });
+      setDone(true);
+    } catch (error) {
+      setFormError(getApiErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (done) {
@@ -70,6 +78,8 @@ export default function ResetPasswordForm({ token }: Props) {
   return (
     <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-5">
       <input type="hidden" name="token" value={token} />
+
+      {formError && <FormAlert variant="error">{formError}</FormAlert>}
 
       <PasswordField
         label="Kata Sandi Baru"

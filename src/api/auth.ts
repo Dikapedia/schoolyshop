@@ -45,6 +45,21 @@ export const changePasswordInputSchema = z.object({
 });
 export type ChangePasswordInput = z.infer<typeof changePasswordInputSchema>;
 
+export const forgotPasswordInputSchema = z.object({
+  email: z.string(),
+});
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordInputSchema>;
+
+export const resetPasswordInputSchema = z.object({
+  token: z.string().min(1),
+  password: z.string(),
+});
+export type ResetPasswordInput = z.infer<typeof resetPasswordInputSchema>;
+
+/** Endpoint reset password tidak mengembalikan body (HTTP 204/200 kosong). */
+export const forgotPasswordResponseSchema = z.void();
+export const resetPasswordResponseSchema = z.void();
+
 export type MockAccount = Session & {
   password: string;
   active: boolean;
@@ -123,6 +138,68 @@ export async function register(input: RegisterInput): Promise<void> {
   });
 }
 
+/**
+ * Minta instruksi reset kata sandi.
+ *
+ * Respons harus selalu terlihat berhasil agar email yang terdaftar tidak
+ * bisa ditebak dari perbedaan pesan.
+ *
+ * TODO(backend): konfirmasi masa berlaku token, apakah token sekali pakai,
+ * format error token kedaluwarsa (404/410/422), dan rate-limit request
+ * (mis. 429) beserta header `Retry-After`.
+ */
+export async function forgotPassword(
+  input: ForgotPasswordInput,
+): Promise<void> {
+  const parsed = parseInput(
+    forgotPasswordInputSchema,
+    input,
+    "Data email tidak valid.",
+  );
+
+  if (USE_MOCK_AUTH) return mockForgotPassword();
+
+  await request<void>("/auth/forgot-password", {
+    method: "POST",
+    body: parsed,
+    responseSchema: forgotPasswordResponseSchema,
+  });
+}
+
+/**
+ * Atur ulang kata sandi dengan token dari tautan email.
+ *
+ * TODO(backend): konfirmasi kontrak token (opaque/JWT), masa berlaku, apakah
+ * token langsung hangus setelah dipakai, dan bentuk response untuk token
+ * tidak valid/kedaluwarsa. Frontend menangani 404/422 dengan pesan yang sama
+ * agar tautan lama tidak membocorkan detail.
+ */
+export async function resetPassword(
+  input: ResetPasswordInput,
+): Promise<void> {
+  const parsed = parseInput(
+    resetPasswordInputSchema,
+    input,
+    "Data reset kata sandi tidak valid.",
+  );
+
+  if (USE_MOCK_AUTH) return mockResetPassword();
+
+  await request<void>("/auth/reset-password", {
+    method: "POST",
+    body: parsed,
+    responseSchema: resetPasswordResponseSchema,
+    statusMessages: {
+      404: "Tautan reset tidak valid atau sudah kedaluwarsa. Silakan minta tautan baru.",
+      422: "Tautan reset tidak valid atau sudah kedaluwarsa. Silakan minta tautan baru.",
+    },
+    statusCodes: {
+      404: "NOT_FOUND",
+      422: "VALIDATION",
+    },
+  });
+}
+
 async function mockLogin({ email, password }: LoginInput): Promise<Session> {
   await sleep(600);
   const key = email.trim().toLowerCase();
@@ -175,6 +252,22 @@ async function mockRegister(input: RegisterInput): Promise<void> {
       active: true,
     },
   ]);
+}
+
+/**
+ * Mock sengaja tidak mengecek apakah email terdaftar agar respons selalu
+ * sama (anti-enumeration), sesuai perilaku UI saat ini.
+ */
+async function mockForgotPassword(): Promise<void> {
+  await sleep(600);
+}
+
+/**
+ * Mock menerima token apa pun yang tidak kosong; validasi token nyata
+ * dilakukan backend.
+ */
+async function mockResetPassword(): Promise<void> {
+  await sleep(600);
 }
 
 /**
