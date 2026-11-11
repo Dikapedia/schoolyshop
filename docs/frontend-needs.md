@@ -19,6 +19,12 @@ diimplementasikan di backend pada refactor ini.
 ### Autentikasi dan sesi
 
 - Frontend saat ini menyimpan sesi di `localStorage`/`sessionStorage`.
+- Response `POST /auth/login` adalah `UserProfile` dari backend:
+  `{ id: number, name, email, role, phone, createdAt }`.
+- `Session` internal frontend tetap memakai `{ id: string, name, email, role }`.
+  `sessionSchema` menerima `id` number maupun string lalu menormalkannya ke
+  string, sehingga sesi lama dan akun mock (`user-1`, `admin-1`) tetap valid.
+  Field `phone` dan `createdAt` diabaikan sampai ada kebutuhan nyata.
 - Backend disarankan memakai cookie `httpOnly` + endpoint `GET /auth/me`.
 - Endpoint yang dibutuhkan: `POST /auth/login`, `POST /auth/register`,
   `POST /auth/logout`, `GET /auth/me`, `PATCH /users/me/password`,
@@ -136,8 +142,12 @@ menyediakan query parameter yang konsisten, misalnya:
 - **Data:** sesi, role, status akun.
 - **Aksi:** login (opsional "ingat saya"), registrasi, redirect sesuai role.
 - **Endpoint:** `POST /auth/login`, `POST /auth/register`.
-- **TODO(backend):** kontrak respons login diasumsikan `{ id, name, email,
-  role }`. Konfirmasi apakah backend mengirim token, cookie, atau keduanya.
+- **Kontrak login:** backend mengirim `UserProfile`
+  `{ id: number, name, email, role, phone, createdAt }`; frontend menormalkan
+  `id` ke string untuk dipakai sebagai key data lokal. Field `phone` dan
+  `createdAt` belum dipakai.
+- **TODO(backend):** konfirmasi apakah backend juga mengirim token atau hanya
+  cookie `httpOnly`.
 
 #### `/lupa-sandi`
 
