@@ -16,8 +16,15 @@ import {
 export const roleSchema = z.enum(["admin", "user"]);
 export type Role = z.infer<typeof roleSchema>;
 
+/**
+ * Backend mengirim `UserProfile.id` sebagai number, sedangkan sesi lama dan
+ * akun mock memakai string. Normalisasi ke string agar key localStorage
+ * (pesanan, alamat, ulasan) tetap konsisten dan sesi lama tidak ter-logout.
+ */
+const sessionIdSchema = z.union([z.string(), z.number()]).transform(String);
+
 export const sessionSchema = z.object({
-  id: z.string(),
+  id: sessionIdSchema,
   name: z.string(),
   email: z.string(),
   role: roleSchema,
@@ -84,9 +91,13 @@ function parseInput<T>(
 }
 
 /**
- * TODO(backend): kontrak login diasumsikan mengembalikan objek Session
- * (id, name, email, role). Konfirmasi apakah backend juga mengirim token
- * atau hanya cookie httpOnly.
+ * Response login backend adalah `UserProfile`:
+ * `{ id: number, name, email, role, phone, createdAt }`.
+ * `sessionSchema` menormalkan `id` menjadi string dan mengabaikan field
+ * tambahan yang belum dipakai frontend.
+ *
+ * TODO(backend): konfirmasi apakah backend juga mengirim token atau hanya
+ * cookie httpOnly.
  */
 export async function login(input: LoginInput): Promise<Session> {
   const parsed = parseInput(
