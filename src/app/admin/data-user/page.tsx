@@ -3,15 +3,21 @@
 import { useState } from "react";
 import Link from "next/link";
 import { formatUserDate, getAdminUsers } from "@/api/admin/users";
+import { ErrorState, LoadingState, StatusBadge } from "@/components/admin/ui";
+import { useAsyncData } from "@/lib/use-async-data";
 
 const PAGE_SIZE = 10;
-const ADMIN_USERS = getAdminUsers();
 
 export default function DataUserPage() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const { data, loading, error, reload } = useAsyncData("admin-users", getAdminUsers);
 
-  const filteredUsers = ADMIN_USERS.filter((user) => {
+  if (loading) return <LoadingState label="Memuat data user..." />;
+  if (error) return <ErrorState message={error} onRetry={reload} />;
+
+  const users = data ?? [];
+  const filteredUsers = users.filter((user) => {
     const keyword = query.trim().toLowerCase();
     if (!keyword) return true;
     return (
@@ -47,7 +53,7 @@ export default function DataUserPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-slate-600">Total User</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">{ADMIN_USERS.length}</p>
+              <p className="text-2xl font-bold text-slate-900 mt-1">{users.length}</p>
               <p className="text-xs text-slate-500 mt-0.5">Akun terdaftar</p>
             </div>
             <div className="h-10 w-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -112,20 +118,7 @@ export default function DataUserPage() {
                   <td className="py-4 px-6 text-slate-600">{user.email}</td>
                   <td className="py-4 px-6 text-slate-600">{formatUserDate(user.joinedAt)}</td>
                   <td className="py-4 px-6">
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                        user.status === "Aktif"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-slate-100 text-slate-600"
-                      }`}
-                    >
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${
-                          user.status === "Aktif" ? "bg-emerald-500" : "bg-slate-400"
-                        }`}
-                      />
-                      {user.status}
-                    </span>
+                    <StatusBadge status={user.status} />
                   </td>
                   <td className="py-4 px-6">
                     <Link

@@ -1,4 +1,4 @@
-import { BASE_USER_MOCKS } from "../mocks/admin/users";
+import { request } from "../client";
 
 export type AdminUser = {
   id: string;
@@ -58,22 +58,12 @@ export function formatUserDate(
   return `${String(day).padStart(2, "0")} ${MONTHS_SHORT[month - 1]} ${year}`;
 }
 
-/**
- * TODO(backend): ganti dengan GET /admin/users?page=&search= dan gunakan
- * field agregat pesanan dari server.
- */
-export function getAdminUsers(): AdminUser[] {
-  return BASE_USER_MOCKS.map((user, index) => {
-    const totalOrders = index === 0 ? 4 : (index % 5) + 1;
-    const processingOrders = 1;
+/** GET /admin/users */
+export function getAdminUsers(): Promise<AdminUser[]> {
+  return request<AdminUser[]>("/admin/users");
+}
 
-    return {
-      ...user,
-      role: "Pengguna Umum / Pembeli",
-      verified: true,
-      totalOrders,
-      completedOrders: totalOrders - processingOrders,
-      processingOrders,
-    };
-  });
+/** GET /admin/users/:id */
+export function getAdminUser(id: string): Promise<AdminUser> {
+  return request<AdminUser>(`/admin/users/${id}`);
 }

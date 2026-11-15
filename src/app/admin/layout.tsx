@@ -4,8 +4,8 @@ import AdminShell from "./admin-shell";
 
 function AdminShellFallback() {
   return (
-    <div className="flex min-h-screen bg-[#f4f7fb]">
-      <aside className="w-64 flex-shrink-0 overflow-hidden bg-[#0d47b8] text-white">
+    <div className="flex min-h-screen bg-admin-surface">
+      <aside className="w-64 flex-shrink-0 overflow-hidden bg-admin-navy text-white">
         <div className="px-6 py-5 border-b border-white/10">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-white/15 flex items-center justify-center">

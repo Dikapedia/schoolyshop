@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import BatikProductIllustration from "@/components/admin/BatikProductIllustration";
+import { ErrorState, LoadingState } from "@/components/admin/ui";
 import {
   ChatIcon,
   CheckCircleIcon,
@@ -12,6 +13,7 @@ import {
   InfoIcon,
 } from "@/components/icons";
 import { getAdminReturnDetail } from "@/api/admin/return-details";
+import { useAsyncData } from "@/lib/use-async-data";
 
 type StepTone = "done" | "active" | "pending";
 
@@ -96,23 +98,20 @@ export default function PengembalianDisetujuiPage() {
   const params = useParams<{ id: string }>();
   const rawId = params?.id;
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
-  const detail = getAdminReturnDetail(id);
+  const { data: detail, loading, error, reload } = useAsyncData(
+    `admin-return-${id}`,
+    () => getAdminReturnDetail(id),
+  );
   const [showBanner, setShowBanner] = useState(true);
   const [reminderSent, setReminderSent] = useState(false);
 
-  if (!detail) {
+  if (loading) return <LoadingState label="Memuat detail pengembalian..." />;
+  if (error || !detail) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900">Pengajuan pengembalian tidak ditemukan</h1>
-        <p className="text-sm text-slate-600 mt-1">Data pengajuan dengan nomor tersebut tidak tersedia.</p>
-        <Link
-          href="/admin/pengiriman/pengembalian"
-          className="inline-flex items-center gap-2 mt-5 px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
-        >
-          <ChevronLeftIcon width={16} height={16} />
-          Kembali ke Daftar Pengembalian
-        </Link>
-      </div>
+      <ErrorState
+        message={error || "Data pengajuan dengan nomor tersebut tidak tersedia."}
+        onRetry={reload}
+      />
     );
   }
 

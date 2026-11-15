@@ -7,6 +7,8 @@ import {
   getAdminShipmentDetail,
   getAdminShipmentTracking,
 } from "@/api/admin/shipments";
+import { ErrorState, LoadingState } from "@/components/admin/ui";
+import { useAsyncData } from "@/lib/use-async-data";
 
 type StepState = "done" | "active" | "pending";
 
@@ -59,25 +61,23 @@ export default function PelacakanPengirimanPage() {
   const params = useParams<{ id: string }>();
   const rawId = params?.id;
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
-  const detail = getAdminShipmentDetail(id);
+  const { data, loading, error, reload } = useAsyncData(
+    `admin-shipment-${id}`,
+    async () => {
+      const [detail, tracking] = await Promise.all([
+        getAdminShipmentDetail(id),
+        getAdminShipmentTracking(id),
+      ]);
+      return { detail, tracking };
+    },
+  );
 
-  if (!detail) {
-    return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900">Pengiriman tidak ditemukan</h1>
-        <p className="text-sm text-slate-600 mt-1">Data pelacakan untuk pengiriman tersebut tidak tersedia.</p>
-        <Link
-          href="/admin/pengiriman"
-          className="inline-flex items-center gap-2 mt-5 px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
-        >
-          <ChevronLeftIcon width={16} height={16} />
-          Kembali ke Pengiriman
-        </Link>
-      </div>
-    );
+  if (loading) return <LoadingState label="Memuat pelacakan pengiriman..." />;
+  if (error || !data) {
+    return <ErrorState message={error || "Data pelacakan tidak tersedia."} onRetry={reload} />;
   }
 
-  const trackingSteps = getAdminShipmentTracking(detail.id);
+  const { detail, tracking: trackingSteps } = data;
   const steps = trackingSteps.map((step, index) => {
     if (index === 0) {
       return {
@@ -185,11 +185,21 @@ export default function PelacakanPengirimanPage() {
               Pembaruan status otomatis dari gateway kurir J&amp;T Express via Biteship API
             </p>
           </div>
-          <div className="text-left sm:text-right shrink-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-              Sinkronisasi Terakhir
-            </p>
-            <p className="text-sm font-semibold text-slate-800 mt-0.5">15 Okt 2026, 08:25 WIB</p>
+          <div className="flex flex-col gap-2 shrink-0 sm:items-end">
+            <div className="text-left sm:text-right">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                Sinkronisasi Terakhir
+              </p>
+              <p className="text-sm font-semibold text-slate-800 mt-0.5">15 Okt 2026, 08:25 WIB</p>
+            </div>
+            <button
+              type="button"
+              onClick={reload}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+            >
+              <RefreshIcon />
+              Perbarui
+            </button>
           </div>
         </div>
 

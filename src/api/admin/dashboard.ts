@@ -1,7 +1,5 @@
-import {
-  ADMIN_DASHBOARD_STATS,
-  ADMIN_RECENT_ORDER_MOCKS,
-} from "../mocks/admin/dashboard";
+import { request } from "../client";
+import type { AdminOrder } from "./orders";
 
 export type AdminDashboardStat = {
   label: string;
@@ -9,26 +7,24 @@ export type AdminDashboardStat = {
   subtext: string;
 };
 
-export type AdminRecentOrder = {
+export type AdminNotification = {
   id: string;
-  buyer: string;
-  meta: string;
-  product: string;
-  total: string;
-  status: string;
-  statusClass: string;
+  title: string;
+  detail: string;
+  href: string;
 };
 
-/**
- * TODO(backend): ganti dengan GET /admin/dashboard/summary.
- */
-export function getAdminDashboardStats(): AdminDashboardStat[] {
-  return ADMIN_DASHBOARD_STATS;
+export type AdminDashboardSummary = {
+  stats: AdminDashboardStat[];
+  notifications: AdminNotification[];
+};
+
+/** GET /admin/dashboard/summary */
+export function getAdminDashboardSummary(): Promise<AdminDashboardSummary> {
+  return request<AdminDashboardSummary>("/admin/dashboard/summary");
 }
 
-/**
- * TODO(backend): ganti dengan GET /admin/orders?limit=5&sort=createdAt:desc.
- */
-export function getAdminRecentOrders(): AdminRecentOrder[] {
-  return ADMIN_RECENT_ORDER_MOCKS;
+/** GET /admin/orders?limit=5&sort=createdAt:desc */
+export function getAdminRecentOrders(): Promise<AdminOrder[]> {
+  return request<AdminOrder[]>("/admin/orders?limit=5&sort=createdAt:desc");
 }

@@ -11,6 +11,8 @@ import {
   TruckIcon,
 } from "@/components/icons";
 import { getAdminShipmentDetail } from "@/api/admin/shipments";
+import { ErrorState, LoadingState } from "@/components/admin/ui";
+import { useAsyncData } from "@/lib/use-async-data";
 
 function CalendarIcon({ className }: { className?: string }) {
   return (
@@ -34,22 +36,14 @@ export default function DetailPengirimanPage() {
   const params = useParams<{ id: string }>();
   const rawId = params?.id;
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
-  const detail = getAdminShipmentDetail(id);
+  const { data, loading, error, reload } = useAsyncData(
+    `admin-shipment-${id}`,
+    () => getAdminShipmentDetail(id),
+  );
 
-  if (!detail) {
-    return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900">Pengiriman tidak ditemukan</h1>
-        <p className="text-sm text-slate-600 mt-1">Data pengiriman dengan nomor tersebut tidak tersedia.</p>
-        <Link
-          href="/admin/pengiriman"
-          className="inline-flex items-center gap-2 mt-5 px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
-        >
-          <ChevronLeftIcon width={16} height={16} />
-          Kembali ke Pengiriman
-        </Link>
-      </div>
-    );
+  if (loading) return <LoadingState label="Memuat detail pengiriman..." />;
+  if (error || !data) {
+    return <ErrorState message={error || "Pengiriman tidak ditemukan."} onRetry={reload} />;
   }
 
   return (
@@ -71,7 +65,7 @@ export default function DetailPengirimanPage() {
         <div>
           <h2 className="text-base font-bold text-emerald-700">Pengiriman Berhasil Dibuat!</h2>
           <p className="text-sm text-emerald-800/80 mt-1 leading-relaxed">
-            Pesanan {detail.id} telah berhasil didaftarkan ke sistem Biteship dan siap dipickup oleh
+            Pesanan {data.id} telah berhasil didaftarkan ke sistem Biteship dan siap dipickup oleh
             kurir.
           </p>
         </div>
@@ -89,7 +83,7 @@ export default function DetailPengirimanPage() {
                   Detail Pengiriman <span className="text-sm font-medium text-slate-400">(Biteship)</span>
                 </h1>
                 <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-600">
-                  Pesanan #{detail.id}
+                  Pesanan #{data.id}
                 </span>
               </div>
               <p className="text-xs font-medium text-slate-500 mt-1">
@@ -99,7 +93,7 @@ export default function DetailPengirimanPage() {
           </div>
           <span className="inline-flex items-center gap-1.5 self-start rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 whitespace-nowrap">
             <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-            {detail.status}
+            {data.status}
           </span>
         </div>
 
@@ -107,11 +101,11 @@ export default function DetailPengirimanPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-5">
             <div>
               <p className="text-xs text-slate-500 mb-1">Nomor Pesanan</p>
-              <p className="text-sm font-mono font-bold text-slate-900">{detail.id}</p>
+              <p className="text-sm font-mono font-bold text-slate-900">{data.id}</p>
             </div>
             <div>
               <p className="text-xs text-slate-500 mb-1">Nama Penerima</p>
-              <p className="text-sm font-semibold text-slate-900">{detail.recipient}</p>
+              <p className="text-sm font-semibold text-slate-900">{data.recipient}</p>
             </div>
             <div>
               <p className="text-xs text-slate-500 mb-1">Produk</p>
@@ -119,12 +113,12 @@ export default function DetailPengirimanPage() {
                 <span className="h-5 w-5 rounded bg-slate-200/80 text-slate-500 flex items-center justify-center">
                   <BoxIcon />
                 </span>
-                {detail.product} ({detail.quantity} pcs)
+                {data.product} ({data.quantity} pcs)
               </p>
             </div>
             <div>
               <p className="text-xs text-slate-500 mb-1">Total Nilai Pesanan</p>
-              <p className="text-sm font-bold text-blue-600">{detail.total}</p>
+              <p className="text-sm font-bold text-blue-600">{data.total}</p>
             </div>
             <div>
               <p className="text-xs text-slate-500 mb-1">Nama Kurir &amp; Layanan</p>
@@ -132,13 +126,13 @@ export default function DetailPengirimanPage() {
                 <span className="h-5 rounded bg-[#e30613] px-1.5 text-[10px] font-black leading-5 text-white">
                   J&amp;T
                 </span>
-                <span className="text-sm text-slate-700">{detail.service}</span>
+                <span className="text-sm text-slate-700">{data.service}</span>
               </div>
             </div>
             <div>
               <p className="text-xs text-slate-500 mb-1">Nomor Resi</p>
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-sm font-mono font-semibold text-slate-900">{detail.trackingNumber}</span>
+                <span className="text-sm font-mono font-semibold text-slate-900">{data.trackingNumber}</span>
                 <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
                   Simulasi Prototype
                 </span>
@@ -148,7 +142,7 @@ export default function DetailPengirimanPage() {
               <p className="text-xs text-slate-500 mb-1">Tanggal Pengiriman</p>
               <p className="inline-flex items-center gap-1.5 text-sm text-slate-700">
                 <CalendarIcon className="text-slate-400" />
-                {detail.shippedAt}
+                {data.shippedAt}
               </p>
             </div>
           </div>
@@ -157,7 +151,7 @@ export default function DetailPengirimanPage() {
             <p className="text-xs text-slate-500 mb-1">Alamat Tujuan</p>
             <p className="flex items-start gap-1.5 text-sm text-slate-700 leading-relaxed">
               <MapPinIcon width={15} height={15} className="mt-0.5 shrink-0 text-blue-600" />
-              {detail.address}
+              {data.address}
             </p>
           </div>
         </div>
@@ -183,14 +177,14 @@ export default function DetailPengirimanPage() {
           </Link>
           <div className="flex flex-wrap items-center gap-2">
             <Link
-              href={`/admin/pengiriman/${detail.id}/label`}
+              href={`/admin/pengiriman/${data.id}/label`}
               className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
             >
               <PrinterIcon width={16} height={16} />
               Cetak Label Pengiriman
             </Link>
             <Link
-              href={`/admin/pengiriman/${detail.id}/pelacakan`}
+              href={`/admin/pengiriman/${data.id}/pelacakan`}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition"
             >
               <MapPinIcon width={16} height={16} />

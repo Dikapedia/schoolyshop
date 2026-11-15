@@ -7,6 +7,8 @@ import {
   formatRupiah,
   getSellerReportDetail,
 } from "@/api/admin/sales-report";
+import { ErrorState, LoadingState } from "@/components/admin/ui";
+import { useAsyncData } from "@/lib/use-async-data";
 
 function DownloadIcon() {
   return (
@@ -95,24 +97,18 @@ export default function RincianPenjualanPage() {
   const params = useParams<{ id: string }>();
   const rawId = params?.id;
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
-  const detail = getSellerReportDetail(id);
+  const reportId = id ?? "";
+  const { data: detail, loading, error, reload } = useAsyncData(
+    `seller-report-${reportId}`,
+    () => getSellerReportDetail(reportId)
+  );
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [disbursed, setDisbursed] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
-  if (!detail) {
-    return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900">Rincian penjual tidak ditemukan</h1>
-        <p className="text-sm text-slate-600 mt-1">Data penjual dengan nomor tersebut tidak tersedia.</p>
-        <Link
-          href="/admin/laporan"
-          className="inline-flex items-center gap-2 mt-5 px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
-        >
-          Kembali ke Laporan Penjualan
-        </Link>
-      </div>
-    );
+  if (loading) return <LoadingState label="Memuat rincian penjualan..." />;
+  if (error || !detail) {
+    return <ErrorState message={error || "Rincian penjual tidak ditemukan."} onRetry={reload} />;
   }
 
   const { seller, products, totals, period } = detail;

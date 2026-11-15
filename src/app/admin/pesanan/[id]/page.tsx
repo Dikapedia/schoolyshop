@@ -16,6 +16,10 @@ import {
 } from "@/components/icons";
 import VerifikasiPesananModal from "@/components/admin/VerifikasiPesananModal";
 import { getAdminOrderDetail } from "@/api/admin/order-details";
+import { verifyAdminOrder } from "@/api/admin/orders";
+import { getApiErrorMessage } from "@/api/errors";
+import { ErrorState, LoadingState } from "@/components/admin/ui";
+import { useAsyncData } from "@/lib/use-async-data";
 
 const rupiah = (value: number) => `Rp${new Intl.NumberFormat("id-ID").format(value)}`;
 
@@ -90,24 +94,31 @@ export default function DetailPesananPage() {
   const rawId = params?.id;
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
   const router = useRouter();
-  const detail = getAdminOrderDetail(id);
+  const { data: detail, loading, error, reload } = useAsyncData(
+    `admin-order-${id ?? ""}`,
+    () => getAdminOrderDetail(id ?? ""),
+  );
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
 
-  if (!detail) {
-    return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900">Pesanan tidak ditemukan</h1>
-        <p className="text-sm text-slate-600 mt-1">Data pesanan dengan nomor tersebut tidak tersedia.</p>
-        <Link
-          href="/admin/pesanan"
-          className="inline-flex items-center gap-2 mt-5 px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
-        >
-          <ChevronLeftIcon width={16} height={16} />
-          Kembali ke Daftar Pesanan
-        </Link>
-      </div>
-    );
+  if (loading) return <LoadingState label="Memuat detail pesanan..." />;
+  if (error || !detail) {
+    return <ErrorState message={error || "Pesanan tidak ditemukan."} onRetry={reload} />;
   }
+
+  const handleVerify = async () => {
+    setVerifying(true);
+    setVerifyError("");
+    try {
+      await verifyAdminOrder(detail.id);
+      setConfirmOpen(false);
+      router.push(`/admin/pesanan/${detail.id}/verifikasi`);
+    } catch (cause) {
+      setVerifyError(getApiErrorMessage(cause));
+      setVerifying(false);
+    }
+  };
 
   const paymentPaid = detail.paymentStatus === "Berhasil";
   const canVerify = detail.orderStatus === "Menunggu Verifikasi";
@@ -404,11 +415,14 @@ export default function DetailPesananPage() {
       {confirmOpen && (
         <VerifikasiPesananModal
           detail={detail}
-          onClose={() => setConfirmOpen(false)}
-          onConfirm={() => {
+          busy={verifying}
+          error={verifyError}
+          onClose={() => {
+            if (verifying) return;
             setConfirmOpen(false);
-            router.push(`/admin/pesanan/${detail.id}/verifikasi`);
+            setVerifyError("");
           }}
+          onConfirm={handleVerify}
         />
       )}
     </div>

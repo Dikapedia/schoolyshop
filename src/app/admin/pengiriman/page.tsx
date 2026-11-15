@@ -13,36 +13,20 @@ import {
 } from "@/components/icons";
 import {
   BITESHIP_COURIER,
-  createTrackingNumber,
+  createAdminShipment,
   getAdminShipments,
   SHIPMENT_STATUS_OPTIONS,
   type AdminShipment,
   type ShipmentStatus,
 } from "@/api/admin/shipments";
 import KonfirmasiPengirimanModal from "@/components/admin/KonfirmasiPengirimanModal";
-
-const ADMIN_SHIPMENTS = getAdminShipments();
-
-function getStatusTone(status: ShipmentStatus) {
-  switch (status) {
-    case "Siap Dikirim":
-      return { badge: "bg-amber-50 text-amber-700", dot: "bg-amber-500" };
-    case "Dikirim":
-      return { badge: "bg-blue-50 text-blue-700", dot: "bg-blue-500" };
-    case "Selesai":
-      return { badge: "bg-emerald-50 text-emerald-700", dot: "bg-emerald-500" };
-  }
-}
-
-function StatusBadge({ status }: { status: ShipmentStatus }) {
-  const tone = getStatusTone(status);
-  return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${tone.badge}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
-      {status}
-    </span>
-  );
-}
+import {
+  ErrorState,
+  LoadingState,
+  StatusBadge,
+} from "@/components/admin/ui";
+import { getApiErrorMessage } from "@/api/errors";
+import { useAsyncData } from "@/lib/use-async-data";
 
 function ClipboardIcon({ className }: { className?: string }) {
   return (
@@ -56,10 +40,22 @@ function ClipboardIcon({ className }: { className?: string }) {
 
 export default function PengirimanPage() {
   const router = useRouter();
-  const [shipments, setShipments] = useState<AdminShipment[]>(ADMIN_SHIPMENTS);
+  const { data, loading, error, reload } = useAsyncData(
+    "admin-shipments",
+    getAdminShipments,
+  );
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"Semua Status" | ShipmentStatus>("Semua Status");
   const [createFor, setCreateFor] = useState<AdminShipment | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
+
+  if (loading) return <LoadingState label="Memuat data pengiriman..." />;
+  if (error || !data) {
+    return <ErrorState message={error || "Data pengiriman tidak tersedia."} onRetry={reload} />;
+  }
+
+  const shipments = data;
 
   const filteredShipments = shipments.filter((shipment) => {
     const keyword = query.trim().toLowerCase();
@@ -110,19 +106,19 @@ export default function PengirimanPage() {
     setStatusFilter("Semua Status");
   };
 
-  const handleCreateShipment = () => {
+  const handleCreateShipment = async () => {
     if (!createFor) return;
     const shipmentId = createFor.id;
-    const trackingNumber = createTrackingNumber(BITESHIP_COURIER);
-    setShipments((prev) =>
-      prev.map((item) =>
-        item.id === shipmentId
-          ? { ...item, courier: BITESHIP_COURIER, trackingNumber, status: "Dikirim" }
-          : item,
-      ),
-    );
-    setCreateFor(null);
-    router.push(`/admin/pengiriman/${shipmentId}`);
+    setCreating(true);
+    setCreateError("");
+    try {
+      await createAdminShipment(shipmentId, BITESHIP_COURIER);
+      setCreateFor(null);
+      router.push(`/admin/pengiriman/${shipmentId}`);
+    } catch (cause) {
+      setCreateError(getApiErrorMessage(cause));
+      setCreating(false);
+    }
   };
 
   return (
@@ -153,9 +149,6 @@ export default function PengirimanPage() {
         >
           <ReceiptIcon width={17} height={17} />
           Pengembalian
-          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-100 px-1.5 text-[11px] font-bold text-red-600">
-            1
-          </span>
         </Link>
       </div>
 
@@ -347,7 +340,13 @@ export default function PengirimanPage() {
       {createFor && (
         <KonfirmasiPengirimanModal
           shipment={createFor}
-          onClose={() => setCreateFor(null)}
+          busy={creating}
+          error={createError}
+          onClose={() => {
+            if (creating) return;
+            setCreateFor(null);
+            setCreateError("");
+          }}
           onConfirm={handleCreateShipment}
         />
       )}

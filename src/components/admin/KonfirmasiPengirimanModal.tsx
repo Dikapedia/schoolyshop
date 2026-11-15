@@ -1,11 +1,14 @@
 "use client";
 
 import { InfoIcon, TruckIcon } from "@/components/icons";
-import { getAdminOrderDetail } from "@/api/admin/order-details";
 import type { AdminShipment } from "@/api/admin/shipments";
 
 type KonfirmasiPengirimanModalProps = {
   shipment: AdminShipment;
+  address?: string;
+  quantity?: number;
+  busy?: boolean;
+  error?: string;
   onClose: () => void;
   onConfirm: () => void;
 };
@@ -21,15 +24,13 @@ function ClockIcon({ className }: { className?: string }) {
 
 export default function KonfirmasiPengirimanModal({
   shipment,
+  address = "Jl. Pendidikan No. 45, RT 03/RW 05, Kebayoran Baru, Jakarta Selatan, 12150",
+  quantity = 1,
+  busy = false,
+  error,
   onClose,
   onConfirm,
 }: KonfirmasiPengirimanModalProps) {
-  const detail = getAdminOrderDetail(shipment.id);
-  const address =
-    detail?.buyer.address ??
-    "Jl. Pendidikan No. 45, RT 03/RW 05, Kebayoran Baru, Jakarta Selatan, 12150";
-  const quantity = detail?.items[0]?.quantity ?? 1;
-
   return (
     <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
       <div
@@ -157,6 +158,12 @@ export default function KonfirmasiPengirimanModal({
           </p>
         </div>
 
+        {error && (
+          <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
+
         <div className="mt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-slate-100 pt-4">
           <div className="flex items-center gap-1.5 text-xs text-slate-500">
             <span>Terkoneksi API:</span>
@@ -169,17 +176,19 @@ export default function KonfirmasiPengirimanModal({
             <button
               type="button"
               onClick={onClose}
-              className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+              disabled={busy}
+              className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
             >
               Batal
             </button>
             <button
               type="button"
               onClick={onConfirm}
-              className="h-10 inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 transition"
+              disabled={busy}
+              className="h-10 inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 transition disabled:cursor-not-allowed disabled:opacity-50"
             >
               <TruckIcon width={17} height={17} />
-              Konfirmasi Pengiriman
+              {busy ? "Memproses..." : "Konfirmasi Pengiriman"}
             </button>
           </div>
         </div>
