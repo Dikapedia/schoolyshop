@@ -11,10 +11,13 @@ diimplementasikan di backend pada refactor ini.
 
 ### Base URL dan mode mock
 
-- Base URL: `NEXT_PUBLIC_API_URL` (lihat `.env.example`).
+- Base URL: `NEXT_PUBLIC_API_URL` (lihat `.env.example`). Bila kosong,
+  frontend memakai `/api` (route handler lokal Next.js).
 - Auth demo: `NEXT_PUBLIC_USE_MOCK_AUTH=true` memakai akun lokal.
-- Semua data domain lain masih berasal dari adapter mock di `src/api/mocks/`.
-  Pergantian ke API nyata dilakukan per modul di `src/api/*`.
+- Admin memakai route handler di `src/app/api/admin/**` dengan store seed
+  di `src/server/admin-store.ts`; mutasi bertahan selama proses server hidup.
+- Data domain toko/customer lain masih berasal dari adapter mock di
+  `src/api/mocks/`. Pergantian ke API nyata dilakukan per modul di `src/api/*`.
 
 ### Autentikasi dan sesi
 
@@ -458,12 +461,13 @@ perilaku tidak berubah:
 4. **Invoice memakai data konsumen yang sama untuk semua pesanan.**
    Sudah dipindahkan ke mock `INVOICE_DETAIL_MOCK`, tetapi belum per pesanan.
 5. **Statistik dashboard admin tidak diturunkan dari data lain.**
-   Angka "48 Produk", "10 Pesanan", dan pendapatan adalah mock terpisah.
+   Sudah diperbaiki: `GET /admin/dashboard/summary` menghitung statistik dari
+   produk, pesanan, user, dan retur yang tersimpan.
 6. **Ringkasan status retur admin tidak konsisten dengan daftar.**
-   Kartu "Pengembalian Selesai" bernilai 2 sementara daftar mock hanya punya
-   1 baris berstatus selesai; nilai lama dipertahankan.
+   Sudah diperbaiki: ringkasan dihitung dari baris retur yang dimuat.
 7. **Ringkasan penjual di `/admin/penjual` masih statis** dan tidak berubah
    saat penjual ditambah/diedit.
+   Sudah diperbaiki: kartu ringkasan dihitung dari daftar penjual.
 8. **Label pembayaran dan seller pada kartu `/pesanan` masih statis**
    ("Lunas - Virtual Account BCA", "Bu Siti Aminah, M.Pd.").
 

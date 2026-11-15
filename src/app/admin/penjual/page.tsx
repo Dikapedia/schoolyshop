@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from "react";
 import {
-  getDefaultAdminSellers,
-  loadAdminSellers,
-  saveAdminSellers,
+  createAdminSeller,
+  getAdminSellers,
+  updateAdminSeller,
   type Seller,
+  type SellerInput,
 } from "@/api/admin/sellers";
+import { getApiErrorMessage } from "@/api/errors";
+import { EmptyState, ErrorState, LoadingState } from "@/components/admin/ui";
+import { useAsyncData } from "@/lib/use-async-data";
 
-// TODO(backend): angka ringkasan masih statis; turunkan dari GET /admin/sellers.
 const summaryCards = [
   {
     title: "Total Supplier Terdaftar",
@@ -54,31 +57,45 @@ const summaryCards = [
 ];
 
 const SELLERS_PAGE_SIZE = 4;
-const initialSellers = getDefaultAdminSellers();
 
 export default function PenjualSupplierPage() {
+  const { data, loading, error, reload } = useAsyncData(
+    "admin-sellers",
+    getAdminSellers,
+  );
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [sellers, setSellers] = useState(initialSellers);
-  const [selected, setSelected] = useState(initialSellers[0]);
+  const [sellers, setSellers] = useState<Seller[]>([]);
+  const [selected, setSelected] = useState<Seller | null>(null);
   const [editForm, setEditForm] = useState({ name: "", business: "", kk: "", whatsapp: "", address: "" });
   const [addForm, setAddForm] = useState({ name: "", business: "", kk: "", whatsapp: "", address: "" });
   const [activeTab, setActiveTab] = useState("Semua");
   const [jenisPenjual, setJenisPenjual] = useState<"Siswa" | "Guru" | "Karyawan">("Siswa");
   const [addJenis, setAddJenis] = useState<"Siswa" | "Guru" | "Karyawan">("Siswa");
   const [page, setPage] = useState(1);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
 
   useEffect(() => {
-    const saved = loadAdminSellers();
-    if (saved) {
-      setSellers(saved); // eslint-disable-line react-hooks/set-state-in-effect
-      setSelected(saved[0]);
-    }
-  }, []);
+    if (!data) return;
+    setSellers(data); // eslint-disable-line react-hooks/set-state-in-effect
+    setSelected((current) =>
+      data.find((seller) => seller.id === current?.id) ?? data[0] ?? null,
+    );
+  }, [data]);
 
-  useEffect(() => {
-    saveAdminSellers(sellers);
-  }, [sellers]);
+  if (loading) return <LoadingState label="Memuat data penjual..." />;
+  if (error || !data) {
+    return <ErrorState message={error || "Data penjual tidak tersedia."} onRetry={reload} />;
+  }
+  if (!selected) {
+    return (
+      <EmptyState
+        title="Belum ada penjual"
+        description="Tambahkan penjual pertama untuk mulai mengelola mitra supplier."
+      />
+    );
+  }
 
   const filteredSellers = sellers.filter((seller) => {
     if (activeTab === "Semua") return true;
@@ -97,8 +114,12 @@ export default function PenjualSupplierPage() {
     { label: "Guru", count: sellers.filter((seller) => seller.type.includes("Guru")).length },
     { label: "Karyawan", count: sellers.filter((seller) => seller.type.includes("Karyawan")).length },
   ];
+  const sellerSummary = summaryCards.map((card, index) => ({
+    ...card,
+    value: String([sellers.length, tabs[1].count, tabs[2].count][index] ?? card.value),
+  }));
 
-  const openEdit = (seller: (typeof sellers)[0]) => {
+  const openEdit = (seller: Seller) => {
     setSelected(seller);
     setEditForm({
       name: seller.name,
@@ -110,99 +131,61 @@ export default function PenjualSupplierPage() {
     if (seller.type.toLowerCase().includes("guru")) setJenisPenjual("Guru");
     else if (seller.type.toLowerCase().includes("karyawan")) setJenisPenjual("Karyawan");
     else setJenisPenjual("Siswa");
+    setFormError("");
     setEditOpen(true);
   };
 
-  const handleSaveEdit = () => {
-    const newName = editForm.name.trim() || selected.name;
-    const newBusiness = editForm.business.trim() || selected.business;
-    const initials = newName
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((w) => w[0]?.toUpperCase() || "")
-      .join("") || selected.initials;
-
-    let updated: Partial<Seller> = {
-      name: newName,
-      business: newBusiness,
-      initials,
-      kk: editForm.kk.trim() || selected.kk,
-      whatsapp: editForm.whatsapp.trim() || selected.whatsapp || "",
-      address: editForm.address.trim() || selected.address,
-    };
-
-    if (jenisPenjual === "Siswa") {
-      updated = {
-        ...updated,
-        type: "Siswa (Kelas XI-RPL)",
-        typeClass: "bg-blue-50 text-blue-700",
-        avatarClass: "bg-blue-50 text-blue-600",
-      };
-    } else if (jenisPenjual === "Guru") {
-      updated = {
-        ...updated,
-        type: "Guru (Seni Budaya)",
-        typeClass: "bg-violet-50 text-violet-700",
-        avatarClass: "bg-violet-50 text-violet-600",
-      };
-    } else {
-      updated = {
-        ...updated,
-        type: "Karyawan / TU",
-        typeClass: "bg-amber-50 text-amber-700",
-        avatarClass: "bg-amber-50 text-amber-600",
-      };
+  const handleSaveEdit = async () => {
+    setSaving(true);
+    setFormError("");
+    try {
+      const updated = await updateAdminSeller(selected.id, {
+        name: editForm.name.trim() || selected.name,
+        business: editForm.business.trim() || selected.business,
+        kk: editForm.kk.trim() || selected.kk,
+        whatsapp: editForm.whatsapp.trim() || selected.whatsapp || "",
+        address: editForm.address.trim() || selected.address,
+        type: jenisPenjual,
+      });
+      setSellers((prev) =>
+        prev.map((seller) => (seller.id === updated.id ? updated : seller)),
+      );
+      setSelected(updated);
+      setEditOpen(false);
+    } catch (cause) {
+      setFormError(getApiErrorMessage(cause));
+    } finally {
+      setSaving(false);
     }
-
-    setSellers((prev) =>
-      prev.map((seller) => {
-        if (seller.id !== selected.id) return seller;
-        return { ...seller, ...updated };
-      })
-    );
-    setSelected((prev) => ({ ...prev, ...updated }));
-    setEditOpen(false);
   };
 
-  const handleAddSeller = () => {
+  const handleAddSeller = async () => {
     const name = addForm.name.trim();
     if (!name) return;
-    const initials =
-      name
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((word) => word[0]?.toUpperCase() || "")
-        .join("") || "PS";
-    const id = sellers.reduce((max, seller) => Math.max(max, seller.id), 0) + 1;
-    const newSeller: Seller = {
-      id,
-      initials,
-      name,
-      business: addForm.business.trim() || `Usaha ${name}`,
-      type: "Siswa (Kelas XI-RPL)",
-      typeClass: "bg-blue-50 text-blue-700",
-      kk: addForm.kk.trim() || "320101010101****",
-      whatsapp: addForm.whatsapp.trim(),
-      address: addForm.address.trim() || "Belum diisi",
-      avatarClass: "bg-blue-50 text-blue-600",
-    };
-    if (addJenis === "Guru") {
-      newSeller.type = "Guru (Seni Budaya)";
-      newSeller.typeClass = "bg-violet-50 text-violet-700";
-      newSeller.avatarClass = "bg-violet-50 text-violet-600";
-    } else if (addJenis === "Karyawan") {
-      newSeller.type = "Karyawan / TU";
-      newSeller.typeClass = "bg-amber-50 text-amber-700";
-      newSeller.avatarClass = "bg-amber-50 text-amber-600";
+    setSaving(true);
+    setFormError("");
+    try {
+      const input: SellerInput = {
+        name,
+        business: addForm.business.trim(),
+        type: addJenis,
+        kk: addForm.kk.trim(),
+        whatsapp: addForm.whatsapp.trim(),
+        address: addForm.address.trim(),
+      };
+      const newSeller = await createAdminSeller(input);
+      setSellers((prev) => [newSeller, ...prev]);
+      setSelected(newSeller);
+      setAddForm({ name: "", business: "", kk: "", whatsapp: "", address: "" });
+      setAddJenis("Siswa");
+      setAddOpen(false);
+      setActiveTab("Semua");
+      setPage(1);
+    } catch (cause) {
+      setFormError(getApiErrorMessage(cause));
+    } finally {
+      setSaving(false);
     }
-    setSellers((prev) => [newSeller, ...prev]);
-    setAddForm({ name: "", business: "", kk: "", whatsapp: "", address: "" });
-    setAddJenis("Siswa");
-    setAddOpen(false);
-    setActiveTab("Semua");
-    setPage(1);
   };
 
   return (
@@ -226,7 +209,7 @@ export default function PenjualSupplierPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          {summaryCards.map((card) => (
+          {sellerSummary.map((card) => (
             <div key={card.title} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
               <div className="flex items-start justify-between">
                 <div>
@@ -546,14 +529,19 @@ export default function PenjualSupplierPage() {
               </div>
             </div>
 
+            {formError && (
+              <p className="mx-6 mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                {formError}
+              </p>
+            )}
             <div className="flex items-center justify-end gap-2 p-6 border-t border-slate-200">
-              <button type="button" onClick={() => setEditOpen(false)} className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50">Batal</button>
-              <button type="button" onClick={handleSaveEdit} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">
+              <button type="button" onClick={() => setEditOpen(false)} disabled={saving} className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">Batal</button>
+              <button type="button" onClick={handleSaveEdit} disabled={saving} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M9 12L11 14L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
                 </svg>
-                Simpan Perubahan
+                {saving ? "Menyimpan..." : "Simpan Perubahan"}
               </button>
             </div>
           </div>
@@ -651,19 +639,24 @@ export default function PenjualSupplierPage() {
               </div>
             </div>
 
+            {formError && (
+              <p className="mx-6 mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                {formError}
+              </p>
+            )}
             <div className="flex items-center justify-end gap-2 p-6 border-t border-slate-200">
-              <button type="button" onClick={() => setAddOpen(false)} className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50">Batal</button>
+              <button type="button" onClick={() => setAddOpen(false)} disabled={saving} className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">Batal</button>
               <button
                 type="button"
                 onClick={handleAddSeller}
-                disabled={!addForm.name.trim()}
+                disabled={!addForm.name.trim() || saving}
                 className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold ${
-                  addForm.name.trim()
+                  addForm.name.trim() && !saving
                     ? "bg-blue-600 text-white hover:bg-blue-700"
                     : "bg-slate-100 text-slate-400 cursor-not-allowed"
                 }`}
               >
-                Simpan Penjual
+                {saving ? "Menyimpan..." : "Simpan Penjual"}
               </button>
             </div>
           </div>

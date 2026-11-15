@@ -1,14 +1,20 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { CATEGORY_OPTIONS } from "@/api/admin/products";
+import {
+  createAdminCategory,
+  deleteAdminCategory,
+  getAdminCategories,
+  getAdminProducts,
+  updateAdminCategory,
+  type AdminCategory,
+} from "@/api/admin/products";
+import { getApiErrorMessage } from "@/api/errors";
+import { ErrorState, LoadingState } from "@/components/admin/ui";
+import { useAsyncData } from "@/lib/use-async-data";
 
-type CategoryItem = {
-  id: number;
-  name: string;
-  description: string;
-};
+type CategoryItem = AdminCategory;
 
 type CategoryForm = {
   name: string;
@@ -16,21 +22,6 @@ type CategoryForm = {
 };
 
 const PAGE_SIZE = 6;
-
-const CATEGORY_DESCRIPTIONS: Record<string, string> = {
-  Makanan: "Snack, roti, dan makanan ringan kantin",
-  Minuman: "Air mineral, susu kemasan, jus buah",
-  Fashion: "Seragam, batik kreasi mandiri siswa, tote bag, dan busana sekolah.",
-  ATK: "Buku tulis, pulpen, pensil 2B, dan modul belajar praktis",
-  Kerajinan: "Hasil karya seni, anyaman siswa, dan cenderamata",
-  Lainnya: "Perlengkapan umum, payung, dan aksesoris sekolah",
-};
-
-const initialCategories: CategoryItem[] = CATEGORY_OPTIONS.map((name, index) => ({
-  id: index + 1,
-  name,
-  description: CATEGORY_DESCRIPTIONS[name] ?? "",
-}));
 
 const emptyForm = (): CategoryForm => ({ name: "", description: "" });
 
@@ -93,13 +84,36 @@ function CategoryIcon({ name }: { name: string }) {
 }
 
 export default function KategoriProdukPage() {
-  const [categories, setCategories] = useState<CategoryItem[]>(initialCategories);
+  const { data, loading, error: loadError, reload } = useAsyncData(
+    "admin-categories",
+    async () => {
+      const [categories, products] = await Promise.all([
+        getAdminCategories(),
+        getAdminProducts(),
+      ]);
+      return { categories, products };
+    },
+  );
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [page, setPage] = useState(1);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editing, setEditing] = useState<CategoryItem | null>(null);
   const [viewOnly, setViewOnly] = useState(false);
   const [form, setForm] = useState<CategoryForm>(emptyForm);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!data) return;
+    setCategories(data.categories); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [data]);
+
+  if (loading) return <LoadingState label="Memuat data kategori..." />;
+  if (loadError || !data) {
+    return <ErrorState message={loadError || "Data kategori tidak tersedia."} onRetry={reload} />;
+  }
+
+  const productCount = (name: string) =>
+    data.products.filter((product) => product.category === name).length;
 
   const filteredCategories = categories;
 
@@ -148,7 +162,7 @@ export default function KategoriProdukPage() {
     setError("");
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (viewOnly) return;
 
     const name = form.name.trim();
@@ -165,27 +179,38 @@ export default function KategoriProdukPage() {
       return;
     }
 
-    if (editing) {
-      setCategories((prev) =>
-        prev.map((category) =>
-          category.id === editing.id
-            ? { ...category, name, description: form.description.trim() }
-            : category
-        )
-      );
-    } else {
-      const nextId = categories.length > 0 ? Math.max(...categories.map((category) => category.id)) + 1 : 1;
-      setCategories((prev) => [...prev, { id: nextId, name, description: form.description.trim() }]);
-      setPage(Math.max(1, Math.ceil((categories.length + 1) / PAGE_SIZE)));
+    try {
+      if (editing) {
+        const updated = await updateAdminCategory(editing.id, {
+          name,
+          description: form.description.trim(),
+        });
+        setCategories((prev) =>
+          prev.map((category) => (category.id === updated.id ? updated : category)),
+        );
+      } else {
+        const created = await createAdminCategory({
+          name,
+          description: form.description.trim(),
+        });
+        setCategories((prev) => [...prev, created]);
+        setPage(Math.max(1, Math.ceil((categories.length + 1) / PAGE_SIZE)));
+      }
+      closePanel();
+    } catch (cause) {
+      setError(getApiErrorMessage(cause));
     }
-
-    closePanel();
   };
 
-  const handleDelete = (category: CategoryItem) => {
+  const handleDelete = async (category: CategoryItem) => {
     if (!window.confirm(`Hapus kategori "${category.name}"?`)) return;
-    setCategories((prev) => prev.filter((item) => item.id !== category.id));
-    setPage(1);
+    try {
+      await deleteAdminCategory(category.id);
+      setCategories((prev) => prev.filter((item) => item.id !== category.id));
+      setPage(1);
+    } catch (cause) {
+      window.alert(getApiErrorMessage(cause));
+    }
   };
 
   return (
@@ -273,7 +298,7 @@ export default function KategoriProdukPage() {
                     </div>
                   </td>
                   <td className="py-4 px-6 text-slate-600 max-w-md">{category.description}</td>
-                  <td className="py-4 px-6 text-center text-slate-400">—</td>
+                  <td className="py-4 px-6 text-center text-slate-600">{productCount(category.name)}</td>
                   <td className="py-4 px-6">
                     <div className="flex items-center gap-1">
                       <button

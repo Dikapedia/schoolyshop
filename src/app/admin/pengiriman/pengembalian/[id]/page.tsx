@@ -4,8 +4,12 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import BatikProductIllustration from "@/components/admin/BatikProductIllustration";
+import { ErrorState, LoadingState } from "@/components/admin/ui";
 import { CheckIcon, ChevronLeftIcon } from "@/components/icons";
 import { getAdminReturnDetail } from "@/api/admin/return-details";
+import { approveAdminReturn, rejectAdminReturn } from "@/api/admin/returns";
+import { getApiErrorMessage } from "@/api/errors";
+import { useAsyncData } from "@/lib/use-async-data";
 
 type ConfirmAction = "accepted" | "rejected";
 
@@ -23,23 +27,40 @@ export default function DetailPengembalianPage() {
   const params = useParams<{ id: string }>();
   const rawId = params?.id;
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
-  const detail = getAdminReturnDetail(id);
+  const { data: detail, loading, error, reload } = useAsyncData(
+    `admin-return-${id}`,
+    () => getAdminReturnDetail(id),
+  );
   const [note, setNote] = useState("");
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
-  if (!detail) {
+  async function handleConfirm() {
+    if (!confirmAction || !detail) return;
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      if (confirmAction === "accepted") {
+        await approveAdminReturn(detail.id);
+      } else {
+        await rejectAdminReturn(detail.id, note.trim() || undefined);
+      }
+      const target = confirmAction === "accepted" ? "disetujui" : "ditolak";
+      router.push(`/admin/pengiriman/pengembalian/${detail.id}/${target}`);
+    } catch (cause) {
+      setSubmitError(getApiErrorMessage(cause));
+      setSubmitting(false);
+    }
+  }
+
+  if (loading) return <LoadingState label="Memuat detail pengembalian..." />;
+  if (error || !detail) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900">Pengajuan pengembalian tidak ditemukan</h1>
-        <p className="text-sm text-slate-600 mt-1">Data pengajuan dengan nomor tersebut tidak tersedia.</p>
-        <Link
-          href="/admin/pengiriman/pengembalian"
-          className="inline-flex items-center gap-2 mt-5 px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
-        >
-          <ChevronLeftIcon width={16} height={16} />
-          Kembali ke Daftar Pengembalian
-        </Link>
-      </div>
+      <ErrorState
+        message={error || "Data pengajuan dengan nomor tersebut tidak tersedia."}
+        onRetry={reload}
+      />
     );
   }
 
@@ -211,7 +232,10 @@ export default function DetailPengembalianPage() {
             <div className="mt-4 space-y-2">
               <button
                 type="button"
-                onClick={() => setConfirmAction("accepted")}
+                onClick={() => {
+                  setSubmitError("");
+                  setConfirmAction("accepted");
+                }}
                 className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition"
               >
                 <CheckIcon width={16} height={16} />
@@ -219,7 +243,10 @@ export default function DetailPengembalianPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setConfirmAction("rejected")}
+                onClick={() => {
+                  setSubmitError("");
+                  setConfirmAction("rejected");
+                }}
                 className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-red-300 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition"
               >
                 <RejectIcon />
@@ -239,7 +266,9 @@ export default function DetailPengembalianPage() {
         <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-[#071b45]/60 backdrop-blur-sm"
-            onClick={() => setConfirmAction(null)}
+            onClick={() => {
+              if (!submitting) setConfirmAction(null);
+            }}
             aria-hidden="true"
           />
           <div
@@ -256,27 +285,32 @@ export default function DetailPengembalianPage() {
                 : "Pengajuan akan ditolak dan pembeli akan menerima informasi bahwa pengembalian tidak dapat diproses."}
             </p>
             <div className="mt-5 flex items-center justify-end gap-2">
+              {submitError && (
+                <p className="mr-auto text-xs font-medium text-red-600">{submitError}</p>
+              )}
               <button
                 type="button"
                 onClick={() => setConfirmAction(null)}
-                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+                disabled={submitting}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Batal
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  const target = confirmAction === "accepted" ? "disetujui" : "ditolak";
-                  setConfirmAction(null);
-                  router.push(`/admin/pengiriman/pengembalian/${detail.id}/${target}`);
-                }}
-                className={`rounded-lg px-4 py-2 text-sm font-semibold text-white transition ${
+                onClick={handleConfirm}
+                disabled={submitting}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
                   confirmAction === "accepted"
                     ? "bg-blue-600 hover:bg-blue-700"
                     : "bg-red-600 hover:bg-red-700"
                 }`}
               >
-                {confirmAction === "accepted" ? "Ya, Terima" : "Ya, Tolak"}
+                {submitting
+                  ? "Memproses..."
+                  : confirmAction === "accepted"
+                    ? "Ya, Terima"
+                    : "Ya, Tolak"}
               </button>
             </div>
           </div>

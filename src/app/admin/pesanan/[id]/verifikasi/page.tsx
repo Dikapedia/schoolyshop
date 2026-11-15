@@ -11,6 +11,8 @@ import {
   TruckIcon,
 } from "@/components/icons";
 import { getAdminOrderDetail } from "@/api/admin/order-details";
+import { ErrorState, LoadingState } from "@/components/admin/ui";
+import { useAsyncData } from "@/lib/use-async-data";
 
 const rupiah = (value: number) => `Rp${new Intl.NumberFormat("id-ID").format(value)}`;
 
@@ -97,23 +99,15 @@ export default function HasilVerifikasiPesananPage() {
   const params = useParams<{ id: string }>();
   const rawId = params?.id;
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
-  const detail = getAdminOrderDetail(id);
+  const { data: detail, loading, error, reload } = useAsyncData(
+    `admin-order-verify-${id ?? ""}`,
+    () => getAdminOrderDetail(id ?? ""),
+  );
   const [bannerOpen, setBannerOpen] = useState(true);
 
-  if (!detail) {
-    return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900">Pesanan tidak ditemukan</h1>
-        <p className="text-sm text-slate-600 mt-1">Data pesanan dengan nomor tersebut tidak tersedia.</p>
-        <Link
-          href="/admin/pesanan"
-          className="inline-flex items-center gap-2 mt-5 px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
-        >
-          <ChevronLeftIcon width={16} height={16} />
-          Kembali ke Daftar Pesanan
-        </Link>
-      </div>
-    );
+  if (loading) return <LoadingState label="Memuat hasil verifikasi..." />;
+  if (error || !detail) {
+    return <ErrorState message={error || "Pesanan tidak ditemukan."} onRetry={reload} />;
   }
 
   const seller = detail.items[0]?.seller ?? "-";

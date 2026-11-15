@@ -9,8 +9,9 @@ import {
   formatReportDate,
   formatRupiah,
 } from "@/api/admin/sales-report";
+import { ErrorState, LoadingState } from "@/components/admin/ui";
+import { useAsyncData } from "@/lib/use-async-data";
 
-const SALES_REPORT = getSalesReport();
 const DEFAULT_START = "2026-10-01";
 const DEFAULT_END = "2026-10-31";
 
@@ -80,6 +81,12 @@ export default function LaporanPenjualanPage() {
   const [semester, setSemester] = useState("ganjil-2026");
   const [seller, setSeller] = useState("all");
   const [appliedSeller, setAppliedSeller] = useState("all");
+  const { data, loading, error, reload } = useAsyncData("sales-report", getSalesReport);
+
+  if (loading) return <LoadingState label="Memuat laporan penjualan..." />;
+  if (error) return <ErrorState message={error} onRetry={reload} />;
+
+  const report = data ?? [];
 
   const applySemester = (value: string) => {
     setSemester(value);
@@ -95,7 +102,7 @@ export default function LaporanPenjualanPage() {
     }
   };
 
-  const rows = SALES_REPORT.filter((row) => {
+  const rows = report.filter((row) => {
     if (appliedSeller !== "all" && row.business !== appliedSeller) return false;
     if (startDate && row.date < startDate) return false;
     if (endDate && row.date > endDate) return false;
@@ -269,7 +276,7 @@ export default function LaporanPenjualanPage() {
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">Semua Penjual</option>
-              {SALES_REPORT.map((row) => (
+              {report.map((row) => (
                 <option key={row.id} value={row.business}>
                   {row.name} — {row.business}
                 </option>

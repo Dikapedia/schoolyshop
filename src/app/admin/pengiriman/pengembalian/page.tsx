@@ -11,15 +11,13 @@ import {
   TruckIcon,
 } from "@/components/icons";
 import {
+  countReturnStatuses,
   getAdminReturns,
-  getAdminReturnStatusCounts,
-  getReturnStatusTone,
   RETURN_STATUS_OPTIONS,
   type ReturnStatus,
 } from "@/api/admin/returns";
-
-const ADMIN_RETURNS = getAdminReturns();
-const RETURN_STATUS_COUNTS = getAdminReturnStatusCounts();
+import { ErrorState, LoadingState, StatusBadge } from "@/components/admin/ui";
+import { useAsyncData } from "@/lib/use-async-data";
 
 function HourglassIcon({ className }: { className?: string }) {
   return (
@@ -38,10 +36,10 @@ function RefreshIcon({ className }: { className?: string }) {
   );
 }
 
-const STATUS_STYLES = [
+const STATUS_STYLES = (counts: Record<ReturnStatus, number>) => [
   {
     label: "Menunggu Persetujuan",
-    value: String(RETURN_STATUS_COUNTS["Menunggu Persetujuan"]),
+    value: String(counts["Menunggu Persetujuan"]),
     description: "Perlu tindakan verifikasi segera",
     tone: "border-t-orange-400",
     descriptionClass: "text-orange-500",
@@ -50,7 +48,7 @@ const STATUS_STYLES = [
   },
   {
     label: "Menunggu Barang Kembali",
-    value: String(RETURN_STATUS_COUNTS["Menunggu Barang Kembali"]),
+    value: String(counts["Menunggu Barang Kembali"]),
     description: "Dalam pengiriman oleh kurir",
     tone: "border-t-blue-400",
     descriptionClass: "text-blue-600",
@@ -59,7 +57,7 @@ const STATUS_STYLES = [
   },
   {
     label: "Pengembalian Diproses",
-    value: String(RETURN_STATUS_COUNTS["Pengembalian Diproses"]),
+    value: String(counts["Pengembalian Diproses"]),
     description: "Proses refund dana / tukar stok",
     tone: "border-t-purple-400",
     descriptionClass: "text-purple-600",
@@ -68,7 +66,7 @@ const STATUS_STYLES = [
   },
   {
     label: "Pengembalian Selesai",
-    value: String(RETURN_STATUS_COUNTS["Pengembalian Selesai"]),
+    value: String(counts["Pengembalian Selesai"]),
     description: "Kasus berhasil ditutup",
     tone: "border-t-emerald-400",
     descriptionClass: "text-emerald-600",
@@ -78,8 +76,21 @@ const STATUS_STYLES = [
 ];
 
 export default function PengembalianBarangPage() {
+  const { data, loading, error, reload } = useAsyncData(
+    "admin-returns",
+    getAdminReturns,
+  );
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"Semua Status" | ReturnStatus>("Semua Status");
+
+  if (loading) return <LoadingState label="Memuat data pengembalian..." />;
+  if (error || !data) {
+    return <ErrorState message={error || "Data pengembalian tidak tersedia."} onRetry={reload} />;
+  }
+
+  const ADMIN_RETURNS = data;
+  const counts = countReturnStatuses(data);
+  const statusStyles = STATUS_STYLES(counts);
 
   const filteredReturns = ADMIN_RETURNS.filter((item) => {
     const keyword = query.trim().toLowerCase();
@@ -118,7 +129,7 @@ export default function PengembalianBarangPage() {
           <ReceiptIcon width={17} height={17} />
           Pengembalian
           <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-100 px-1.5 text-[11px] font-bold text-red-600">
-            1
+            {counts["Menunggu Persetujuan"]}
           </span>
         </Link>
       </div>
@@ -129,7 +140,7 @@ export default function PengembalianBarangPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        {STATUS_STYLES.map((stat) => (
+        {statusStyles.map((stat) => (
           <div
             key={stat.label}
             className={`bg-white rounded-xl border border-slate-200 border-t-4 ${stat.tone} p-5 shadow-sm`}
@@ -201,7 +212,6 @@ export default function PengembalianBarangPage() {
             </thead>
             <tbody>
               {filteredReturns.map((item) => {
-                const tone = getReturnStatusTone(item.status);
                 return (
                   <tr key={item.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/40 transition-colors">
                     <td className="py-4 px-6">
@@ -221,10 +231,7 @@ export default function PengembalianBarangPage() {
                     <td className="py-4 px-6 text-slate-700">{item.reason}</td>
                     <td className="py-4 px-6 text-slate-600 whitespace-nowrap">{item.submittedAt}</td>
                     <td className="py-4 px-6">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${tone.badge}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
-                        {item.status}
-                      </span>
+                      <StatusBadge status={item.status} />
                     </td>
                     <td className="py-4 px-6">
                       {item.status === "Menunggu Persetujuan" ? (

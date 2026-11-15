@@ -12,6 +12,15 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Token desain panel admin, mengikuti Figma "02 - Admin Desktop". */
+@theme {
+  --color-admin-navy: #204f85;
+  --color-admin-navy-dark: #173d68;
+  --color-admin-active: #2f6ed0;
+  --color-admin-surface: #f7f9fc;
+  --color-admin-border: #e2e8f0;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;

@@ -1,9 +1,4 @@
-import {
-  ADMIN_SHIPMENT_MOCKS,
-  ADMIN_TRACKING_STEP_MOCKS,
-  DEFAULT_SHIPMENT_ADDRESS,
-  SHIPMENT_OVERRIDES,
-} from "../mocks/admin/shipments";
+import { request } from "../client";
 
 export type ShipmentStatus = "Siap Dikirim" | "Dikirim" | "Selesai";
 
@@ -54,73 +49,32 @@ export const COURIER_OPTIONS = [
 
 export const BITESHIP_COURIER = "J&T Express";
 
-/**
- * TODO(backend): ganti dengan GET /admin/shipments?page=&search=&status=.
- */
-export function getAdminShipments(): AdminShipment[] {
-  return ADMIN_SHIPMENT_MOCKS;
+/** GET /admin/shipments */
+export function getAdminShipments(): Promise<AdminShipment[]> {
+  return request<AdminShipment[]>("/admin/shipments");
 }
 
-/**
- * TODO(backend): ganti dengan GET /admin/shipments/:id. Beberapa field
- * (alamat, layanan, waktu kirim) masih diisi nilai contoh.
- */
+/** GET /admin/shipments/:id */
 export function getAdminShipmentDetail(
-  id: string | undefined,
-): AdminShipmentDetail | null {
-  if (!id) return null;
-  const shipment = ADMIN_SHIPMENT_MOCKS.find((item) => item.id === id);
-  if (!shipment) return null;
-
-  const override = SHIPMENT_OVERRIDES[shipment.id] ?? {};
-  const courier = override.courier ?? shipment.courier;
-  const service =
-    override.service ??
-    (courier.startsWith("J&T") ? "Regular Service" : "REG Service");
-  const trackingNumber =
-    override.trackingNumber ??
-    (shipment.trackingNumber === "Belum tersedia"
-      ? createTrackingNumber(courier)
-      : shipment.trackingNumber);
-
-  return {
-    id: shipment.id,
-    recipient: shipment.customer,
-    product: shipment.product,
-    quantity: 1,
-    total: shipment.total,
-    courier,
-    service,
-    trackingNumber,
-    shippedAt: override.shippedAt ?? "14 Oktober 2026, 14:30 WIB",
-    address: override.address ?? DEFAULT_SHIPMENT_ADDRESS,
-    status: override.status ?? shipment.status,
-  };
+  id: string,
+): Promise<AdminShipmentDetail> {
+  return request<AdminShipmentDetail>(`/admin/shipments/${id}`);
 }
 
-/**
- * TODO(backend): ganti dengan GET /admin/shipments/:id/tracking dan
- * petakan status kurir ke state UI.
- */
+/** GET /admin/shipments/:id/tracking */
 export function getAdminShipmentTracking(
-  id: string | undefined,
-): AdminTrackingStep[] {
-  void id;
-  return ADMIN_TRACKING_STEP_MOCKS;
+  id: string,
+): Promise<AdminTrackingStep[]> {
+  return request<AdminTrackingStep[]>(`/admin/shipments/${id}/tracking`);
 }
 
-/**
- * TODO(backend): nomor resi seharusnya dibuat oleh Biteship/kurir, bukan
- * diacak di browser.
- */
-export function createTrackingNumber(courier: string) {
-  const prefix = courier.startsWith("JNE")
-    ? "JNE"
-    : courier.startsWith("J&T")
-      ? "JT"
-      : courier.startsWith("Biteship")
-        ? "BTS"
-        : "SC";
-  const suffix = Math.floor(100000000 + Math.random() * 900000000);
-  return `${prefix}${suffix}`;
+/** POST /admin/shipments */
+export function createAdminShipment(
+  orderId: string,
+  courier = BITESHIP_COURIER,
+): Promise<AdminShipment> {
+  return request<AdminShipment>("/admin/shipments", {
+    method: "POST",
+    body: { orderId, courier },
+  });
 }

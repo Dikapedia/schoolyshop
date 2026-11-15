@@ -1,9 +1,4 @@
-import {
-  GENERIC_PRODUCT_CATEGORIES,
-  GENERIC_PRODUCT_NAMES,
-  ISMI_PRODUCTS,
-  SALES_REPORT_MOCKS,
-} from "../mocks/admin/sales-report";
+import { request } from "../client";
 
 export type SellerRoleTone = "siswa" | "guru" | "karyawan";
 
@@ -79,60 +74,14 @@ export type SellerReportDetail = {
   };
 };
 
-/**
- * TODO(backend): ganti dengan GET /admin/reports/sales?startDate=&endDate=
- * dan pindahkan filter tanggal/seller ke server.
- */
-export function getSalesReport(): SellerSalesRow[] {
-  return SALES_REPORT_MOCKS;
+/** GET /admin/reports/sales?startDate=&endDate=&sellerId= */
+export function getSalesReport(): Promise<SellerSalesRow[]> {
+  return request<SellerSalesRow[]>("/admin/reports/sales");
 }
 
-/**
- * TODO(backend): ganti dengan GET /admin/reports/sales/:sellerId.
- */
+/** GET /admin/reports/sales/:sellerId */
 export function getSellerReportDetail(
-  id: string | undefined,
-): SellerReportDetail | null {
-  if (!id) return null;
-  const seller = SALES_REPORT_MOCKS.find((row) => String(row.id) === id);
-  if (!seller) return null;
-
-  const products: SellerProductRow[] =
-    seller.id === 1
-      ? ISMI_PRODUCTS
-      : [
-          {
-            id: 1,
-            name:
-              GENERIC_PRODUCT_NAMES[seller.id] ??
-              `Produk ${seller.business}`,
-            sku: `SCH-${String(seller.id).padStart(3, "0")}`,
-            category:
-              GENERIC_PRODUCT_CATEGORIES[seller.id] ?? "Kriya & Kerajinan",
-            unitPrice: Math.round(seller.total / seller.sold),
-            sold: seller.sold,
-            total: seller.total,
-            refund: seller.refund,
-            net: seller.net,
-            status: seller.refund > 0 ? "Selesai & Sebagian Retur" : "Selesai",
-            statusTone: seller.refund > 0 ? "warning" : "success",
-          },
-        ];
-
-  const totals = products.reduce(
-    (acc, product) => ({
-      sold: acc.sold + product.sold,
-      total: acc.total + product.total,
-      refund: acc.refund + product.refund,
-      net: acc.net + product.net,
-    }),
-    { sold: 0, total: 0, refund: 0, net: 0 },
-  );
-
-  return {
-    seller,
-    period: REPORT_PERIOD,
-    products,
-    totals,
-  };
+  id: string,
+): Promise<SellerReportDetail> {
+  return request<SellerReportDetail>(`/admin/reports/sales/${id}`);
 }

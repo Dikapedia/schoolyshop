@@ -6,54 +6,36 @@ import {
   getAdminOrders,
   ORDER_STATUS_OPTIONS,
   type OrderStatus,
-  type PaymentStatus,
 } from "@/api/admin/orders";
+import {
+  ErrorState,
+  LoadingState,
+  StatusBadge,
+} from "@/components/admin/ui";
+import { useAsyncData } from "@/lib/use-async-data";
 
 const PAGE_SIZE = 10;
-const ADMIN_ORDERS = getAdminOrders();
 
 const PAYMENT_FILTERS = ["Semua Pembayaran", "Berhasil", "Menunggu Pembayaran"] as const;
 
-function getBadgeTone(status: PaymentStatus | OrderStatus) {
-  switch (status) {
-    case "Berhasil":
-    case "Selesai":
-      return { badge: "bg-emerald-50 text-emerald-700", dot: "bg-emerald-500" };
-    case "Menunggu Pembayaran":
-      return { badge: "bg-amber-50 text-amber-700", dot: "bg-amber-500" };
-    case "Menunggu Verifikasi":
-    case "Diproses":
-      return { badge: "bg-blue-50 text-blue-700", dot: "bg-blue-500" };
-    case "Dikirim":
-      return { badge: "bg-emerald-50 text-emerald-700", dot: "bg-emerald-500" };
-    default:
-      return { badge: "bg-slate-100 text-slate-600", dot: "bg-slate-400" };
-  }
-}
-
-function StatusBadge({ label }: { label: PaymentStatus | OrderStatus }) {
-  const tone = getBadgeTone(label);
-  const multiline = label === "Menunggu Pembayaran";
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full font-medium ${tone.badge} ${
-        multiline ? "px-3 py-1.5 text-[11px] leading-tight max-w-[110px]" : "px-2.5 py-1 text-xs whitespace-nowrap"
-      }`}
-    >
-      <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${tone.dot}`} />
-      <span className={multiline ? "whitespace-normal" : "whitespace-nowrap"}>{label}</span>
-    </span>
-  );
-}
-
 export default function PesananPage() {
+  const { data, loading, error, reload } = useAsyncData(
+    "admin-orders",
+    getAdminOrders,
+  );
   const [query, setQuery] = useState("");
   const [paymentFilter, setPaymentFilter] = useState<(typeof PAYMENT_FILTERS)[number]>("Semua Pembayaran");
   const [orderFilter, setOrderFilter] = useState<"Semua Status Pesanan" | OrderStatus>("Semua Status Pesanan");
   const [page, setPage] = useState(1);
 
-  const filteredOrders = ADMIN_ORDERS.filter((order) => {
+  if (loading) return <LoadingState label="Memuat daftar pesanan..." />;
+  if (error || !data) {
+    return <ErrorState message={error || "Data pesanan tidak tersedia."} onRetry={reload} />;
+  }
+
+  const orders = data;
+
+  const filteredOrders = orders.filter((order) => {
     const keyword = query.trim().toLowerCase();
     const matchesKeyword =
       !keyword ||
@@ -73,14 +55,14 @@ export default function PesananPage() {
   );
   const startIndex = filteredOrders.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
 
-  const waitingPayment = ADMIN_ORDERS.filter((order) => order.paymentStatus === "Menunggu Pembayaran").length;
-  const paymentSuccess = ADMIN_ORDERS.filter((order) => order.paymentStatus === "Berhasil").length;
-  const inProcess = ADMIN_ORDERS.filter((order) => order.orderStatus === "Diproses").length;
+  const waitingPayment = orders.filter((order) => order.paymentStatus === "Menunggu Pembayaran").length;
+  const paymentSuccess = orders.filter((order) => order.paymentStatus === "Berhasil").length;
+  const inProcess = orders.filter((order) => order.orderStatus === "Diproses").length;
 
   const stats = [
     {
       label: "Total Pesanan",
-      value: ADMIN_ORDERS.length,
+      value: orders.length,
       description: "Total keseluruhan pesanan",
       labelClass: "text-slate-600",
       valueClass: "text-slate-900",
@@ -270,10 +252,10 @@ export default function PesananPage() {
                   <td className="py-4 px-6 text-slate-700">{order.product}</td>
                   <td className="py-4 px-6 font-semibold text-slate-900">{order.total}</td>
                   <td className="py-4 px-6">
-                    <StatusBadge label={order.paymentStatus} />
+                    <StatusBadge status={order.paymentStatus} />
                   </td>
                   <td className="py-4 px-6">
-                    <StatusBadge label={order.orderStatus} />
+                    <StatusBadge status={order.orderStatus} />
                   </td>
                   <td className="py-4 px-6">
                     <Link

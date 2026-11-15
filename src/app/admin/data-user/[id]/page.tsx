@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { formatUserDate, getAdminUsers } from "@/api/admin/users";
-
-const ADMIN_USERS = getAdminUsers();
+import { formatUserDate, getAdminUser } from "@/api/admin/users";
+import { ErrorState, LoadingState, StatusBadge } from "@/components/admin/ui";
+import { useAsyncData } from "@/lib/use-async-data";
 
 function getInitials(name: string) {
   return name
@@ -20,21 +20,15 @@ export default function DetailUserPage() {
   const params = useParams<{ id: string }>();
   const rawId = params?.id;
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
-  const user = ADMIN_USERS.find((item) => item.id.toLowerCase() === id?.toLowerCase());
+  const userId = id ?? "";
+  const { data: user, loading, error, reload } = useAsyncData(
+    `admin-user-${userId}`,
+    () => getAdminUser(userId)
+  );
 
-  if (!user) {
-    return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900">User tidak ditemukan</h1>
-        <p className="text-sm text-slate-600 mt-1">Data pengguna dengan ID tersebut tidak tersedia.</p>
-        <Link
-          href="/admin/data-user"
-          className="inline-flex items-center gap-2 mt-5 px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
-        >
-          ← Kembali ke Data User
-        </Link>
-      </div>
-    );
+  if (loading) return <LoadingState label="Memuat detail user..." />;
+  if (error || !user) {
+    return <ErrorState message={error || "User tidak ditemukan."} onRetry={reload} />;
   }
 
   const activity = [
@@ -119,20 +113,7 @@ export default function DetailUserPage() {
             </div>
             <div>
               <h2 className="text-xl font-bold text-slate-900">{user.name}</h2>
-              <span
-                className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                  user.status === "Aktif"
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "bg-slate-100 text-slate-600"
-                }`}
-              >
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    user.status === "Aktif" ? "bg-emerald-500" : "bg-slate-400"
-                  }`}
-                />
-                {user.status}
-              </span>
+              <StatusBadge status={user.status} className="mt-2" />
               <div className="flex flex-wrap items-center gap-3 mt-3 text-sm">
                 <span className="inline-flex items-center gap-1.5 text-slate-600">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

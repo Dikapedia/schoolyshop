@@ -9,12 +9,16 @@ type VerifikasiPesananModalProps = {
   detail: AdminOrderDetail;
   onClose: () => void;
   onConfirm: () => void;
+  busy?: boolean;
+  error?: string;
 };
 
 export default function VerifikasiPesananModal({
   detail,
   onClose,
   onConfirm,
+  busy = false,
+  error,
 }: VerifikasiPesananModalProps) {
   const productNames = detail.items.map((item) => item.name).join(", ") || "-";
   const paymentPaid = detail.paymentStatus === "Berhasil";
@@ -103,21 +107,29 @@ export default function VerifikasiPesananModal({
           </div>
         </div>
 
+        {error && (
+          <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
+
         <div className="mt-6 grid grid-cols-2 gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="h-11 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+            disabled={busy}
+            className="h-11 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
           >
             Batal
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="h-11 inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 transition"
+            disabled={busy}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <CheckCircleIcon width={17} height={17} />
-            Ya, Verifikasi
+            {busy ? "Memverifikasi..." : "Ya, Verifikasi"}
           </button>
         </div>
       </div>
