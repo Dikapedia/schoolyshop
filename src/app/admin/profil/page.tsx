@@ -1,19 +1,21 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/api/auth";
 import { saveSession, clearSession } from "@/api/auth";
 import { site } from "@/lib/site";
 
+const noopSubscribe = () => () => {};
+
 export default function AdminProfilPage() {
   const router = useRouter();
   const session = useSession();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  );
 
   const sessionRef = useRef(session);
   useEffect(() => {

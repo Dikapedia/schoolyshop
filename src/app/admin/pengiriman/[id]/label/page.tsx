@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ChevronLeftIcon, PrinterIcon } from "@/components/icons";
 import { getAdminShipmentDetail } from "@/api/admin/shipments";
+import { ErrorState, LoadingState } from "@/components/admin/ui";
+import { useAsyncData } from "@/lib/use-async-data";
 
 // TODO(backend): pola barcode masih statis; gunakan barcode/resi valid dari GET /admin/shipments/:id.
 const BARCODE_PATTERN =
@@ -31,25 +33,17 @@ export default function PratinjauLabelPage() {
   const params = useParams<{ id: string }>();
   const rawId = params?.id;
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
-  const detail = getAdminShipmentDetail(id);
+  const { data, loading, error, reload } = useAsyncData(
+    `admin-shipment-${id}`,
+    () => getAdminShipmentDetail(id),
+  );
 
-  if (!detail) {
-    return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900">Pengiriman tidak ditemukan</h1>
-        <p className="text-sm text-slate-600 mt-1">Label untuk pengiriman tersebut tidak tersedia.</p>
-        <Link
-          href="/admin/pengiriman"
-          className="inline-flex items-center gap-2 mt-5 px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
-        >
-          <ChevronLeftIcon width={16} height={16} />
-          Kembali ke Pengiriman
-        </Link>
-      </div>
-    );
+  if (loading) return <LoadingState label="Memuat label pengiriman..." />;
+  if (error || !data) {
+    return <ErrorState message={error || "Pengiriman tidak ditemukan."} onRetry={reload} />;
   }
 
-  const recipientAddress = detail.address.replace(/,\s*12150$/, "");
+  const recipientAddress = data.address.replace(/,\s*12150$/, "");
 
   return (
     <div>
@@ -78,7 +72,7 @@ export default function PratinjauLabelPage() {
           <span>&gt;</span>
           <Link href="/admin/pengiriman" className="hover:text-slate-600">Pengiriman &amp; Pengembalian</Link>
           <span>&gt;</span>
-          <Link href={`/admin/pengiriman/${detail.id}`} className="hover:text-slate-600">Detail Pengiriman</Link>
+          <Link href={`/admin/pengiriman/${data.id}`} className="hover:text-slate-600">Detail Pengiriman</Link>
           <span>&gt;</span>
           <span className="font-medium text-blue-600">Pratinjau Label</span>
         </div>
@@ -87,7 +81,7 @@ export default function PratinjauLabelPage() {
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Pratinjau Label Pengiriman</h1>
             <p className="text-sm text-slate-600 mt-1">
-              Label pengiriman standar Biteship untuk paket pesanan #{detail.id}
+              Label pengiriman standar Biteship untuk paket pesanan #{data.id}
             </p>
           </div>
 
@@ -97,7 +91,7 @@ export default function PratinjauLabelPage() {
               Siap Cetak (Thermal 100×150 mm)
             </span>
             <Link
-              href={`/admin/pengiriman/${detail.id}`}
+              href={`/admin/pengiriman/${data.id}`}
               className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
             >
               <ChevronLeftIcon width={15} height={15} />
@@ -158,7 +152,7 @@ export default function PratinjauLabelPage() {
               <Barcode />
             </div>
             <p className="mt-1.5 text-center font-mono text-base font-bold tracking-[0.25em] text-slate-900">
-              {detail.trackingNumber}
+              {data.trackingNumber}
             </p>
           </div>
 
@@ -167,7 +161,7 @@ export default function PratinjauLabelPage() {
               <p className="text-[8px] font-semibold uppercase tracking-widest text-slate-500">
                 Kepada (Penerima)
               </p>
-              <p className="mt-1 text-xs font-bold text-slate-900">{detail.recipient}</p>
+              <p className="mt-1 text-xs font-bold text-slate-900">{data.recipient}</p>
               <p className="text-slate-700">0812-3456-7890</p>
               <p className="mt-1 text-slate-700">{recipientAddress}</p>
               <div className="mt-1.5 inline-block bg-slate-200 px-1.5 py-0.5 text-[9px] font-semibold text-slate-700">
@@ -191,7 +185,7 @@ export default function PratinjauLabelPage() {
           <div className="mt-3 grid grid-cols-3 gap-3 border-t border-dashed border-slate-300 pt-3 text-[10px]">
             <div>
               <p className="text-[8px] font-semibold uppercase tracking-wide text-slate-500">No. Pesanan</p>
-              <p className="font-mono font-bold text-slate-900">#{detail.id}</p>
+              <p className="font-mono font-bold text-slate-900">#{data.id}</p>
             </div>
             <div>
               <p className="text-[8px] font-semibold uppercase tracking-wide text-slate-500">Berat Paket</p>
@@ -199,14 +193,14 @@ export default function PratinjauLabelPage() {
             </div>
             <div>
               <p className="text-[8px] font-semibold uppercase tracking-wide text-slate-500">Kuantitas</p>
-              <p className="font-semibold text-slate-900">{detail.quantity} pcs</p>
+              <p className="font-semibold text-slate-900">{data.quantity} pcs</p>
             </div>
           </div>
 
           <div className="mt-3 grid grid-cols-[1.4fr_1fr] gap-4 border-t border-dashed border-slate-300 pt-3">
             <div>
               <p className="text-[8px] font-semibold uppercase tracking-wide text-slate-500">Isi Paket:</p>
-              <p className="text-xs font-bold text-slate-900">{detail.product}</p>
+              <p className="text-xs font-bold text-slate-900">{data.product}</p>
               <p className="text-[9px] text-slate-500">Seragam Sekolah / Atasan Katun Premium</p>
             </div>
             <div>
@@ -217,7 +211,7 @@ export default function PratinjauLabelPage() {
                 NON-COD (LUNAS)
               </span>
               <p className="mt-1 text-[10px] text-slate-700">
-                Nilai: <span className="font-bold text-slate-900">{detail.total}</span>
+                Nilai: <span className="font-bold text-slate-900">{data.total}</span>
               </p>
             </div>
           </div>

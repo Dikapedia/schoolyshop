@@ -214,6 +214,18 @@ Header → Klik "Bantuan" → /profil/bantuan
 
 ---
 
+## Alur Branch
+
+- `main` — kode stabil untuk production.
+- `develop` — integrasi dan pengujian perubahan.
+- Fitur/perbaikan dikerjakan di branch `feat/...`, `fix/...`, `chore/...`,
+  `docs/...`, atau `refactor/...`, lalu masuk ke `develop` lewat pull request.
+- Promosi ke `main` dilakukan lewat pull request dari `develop` setelah
+  terverifikasi.
+
+Detail konvensi dan perintah proteksi branch ada di
+[`docs/branching.md`](docs/branching.md).
+
 ## Catatan Pengembangan
 
 - **Lapisan API**: Semua pengambilan data berada di `src/api/` (satu file per domain). Komponen tidak mengakses `localStorage` atau `fetch` secara langsung.

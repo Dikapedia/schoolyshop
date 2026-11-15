@@ -48,4 +48,5 @@ export const RETURN_STATUS_COUNTS: Record<ReturnStatus, number> = {
   "Menunggu Barang Kembali": 1,
   "Pengembalian Diproses": 1,
   "Pengembalian Selesai": 2,
+  Ditolak: 0,
 };

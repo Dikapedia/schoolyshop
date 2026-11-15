@@ -12,7 +12,7 @@ import {
  * - Data domain lain berasal dari adapter di `src/api/mocks` sampai endpoint
  *   backend tersedia.
  */
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 export const USE_MOCK_AUTH = process.env.NEXT_PUBLIC_USE_MOCK_AUTH !== "false";
 
 type RequestOptions<T> = {

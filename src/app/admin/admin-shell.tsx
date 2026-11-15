@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useSession } from "@/api/auth";
+import { clearSession, useSession } from "@/api/auth";
+import { getAdminDashboardSummary } from "@/api/admin/dashboard";
 import {
   BarChartIcon,
   BellIcon,
@@ -15,9 +15,15 @@ import {
   TruckIcon,
   UsersIcon,
 } from "@/components/icons";
-import { clearSession } from "@/api/auth";
 
-type MenuIconName = "dashboard" | "seller" | "product" | "order" | "shipping" | "users" | "report";
+type MenuIconName =
+  | "dashboard"
+  | "seller"
+  | "product"
+  | "order"
+  | "shipping"
+  | "users"
+  | "report";
 
 type MenuItem = {
   label: string;
@@ -62,13 +68,27 @@ const SEARCH_ENTRIES: { label: string; href: string; hint: string }[] = [
   { label: "Kategori Produk", href: "/admin/produk/kategori", hint: "Produk" },
   { label: "Data User", href: "/admin/data-user", hint: "Pengguna" },
   { label: "Pesanan & Transaksi", href: "/admin/pesanan", hint: "Pesanan" },
-  { label: "Pengiriman & Pengembalian", href: "/admin/pengiriman", hint: "Logistik" },
-  { label: "Pengembalian Barang", href: "/admin/pengiriman/pengembalian", hint: "Logistik" },
+  {
+    label: "Pengiriman & Pengembalian",
+    href: "/admin/pengiriman",
+    hint: "Logistik",
+  },
+  {
+    label: "Pengembalian Barang",
+    href: "/admin/pengiriman/pengembalian",
+    hint: "Logistik",
+  },
   { label: "Laporan Penjualan", href: "/admin/laporan", hint: "Laporan" },
   { label: "Profil Admin", href: "/admin/profil", hint: "Kelola akun" },
 ];
 
-function MenuIcon({ name, className }: { name: MenuIconName; className?: string }) {
+function MenuIcon({
+  name,
+  className,
+}: {
+  name: MenuIconName;
+  className?: string;
+}) {
   const props = { width: 17, height: 17, className, "aria-hidden": true } as const;
 
   switch (name) {
@@ -104,107 +124,175 @@ function MenuLabel({ item }: { item: MenuItem }) {
   return <span>{item.label}</span>;
 }
 
+const noopSubscribe = () => () => {};
+
+function ShellFallback({ message }: { message: string }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-admin-surface">
+      <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-6 py-4 text-sm text-slate-500 shadow-sm">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-200 border-t-blue-600" />
+        {message}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const session = useSession();
+  const router = useRouter();
+  const pathname = usePathname();
+  const hydrated = useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  );
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [submenuOpen, setSubmenuOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const router = useRouter();
-  const pathname = usePathname();
-  const notificationCount = 3;
+  const [notifications, setNotifications] = useState<
+    Awaited<ReturnType<typeof getAdminDashboardSummary>>["notifications"]
+  >([]);
 
-  const searchResults = searchQuery.trim()
-    ? SEARCH_ENTRIES.filter((entry) =>
-        `${entry.label} ${entry.hint}`.toLowerCase().includes(searchQuery.trim().toLowerCase())
-      )
-    : [];
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!session) {
+      router.replace("/login?next=/admin");
+      return;
+    }
+    if (session.role !== "admin") {
+      router.replace("/");
+    }
+  }, [hydrated, session, router]);
+
+  useEffect(() => {
+    if (!session || session.role !== "admin") return;
+    let active = true;
+    getAdminDashboardSummary()
+      .then((summary) => {
+        if (active) setNotifications(summary.notifications);
+      })
+      .catch(() => {
+        if (active) setNotifications([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [pathname, session]);
+
+  const searchResults = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return [];
+    return SEARCH_ENTRIES.filter((entry) =>
+      `${entry.label} ${entry.hint}`.toLowerCase().includes(query),
+    );
+  }, [searchQuery]);
+
+  if (!hydrated) return <ShellFallback message="Memeriksa sesi admin..." />;
+  if (!session || session.role !== "admin") {
+    return <ShellFallback message="Mengalihkan ke halaman login..." />;
+  }
 
   const isActive = (href: string) => {
-    if (href === "/admin") {
-      return pathname === "/admin";
-    }
+    if (href === "/admin") return pathname === "/admin";
     return pathname.startsWith(href);
   };
 
-  const isKategoriPage = pathname.startsWith("/admin/produk/kategori");
-  const isLaporanPage = pathname.startsWith("/admin/laporan");
-  const isLaporanDetailPage = /^\/admin\/laporan\/[^/]+/.test(pathname);
-  const isDataUserPage = pathname.startsWith("/admin/data-user");
-  const isUserDetailPage = pathname.startsWith("/admin/data-user/");
-  const isPesananPage = pathname.startsWith("/admin/pesanan");
-  const isPesananDetailPage = /^\/admin\/pesanan\/[^/]+/.test(pathname);
-  const isPengirimanPage = pathname.startsWith("/admin/pengiriman");
-  const isPengirimanDetailPage = /^\/admin\/pengiriman\/[^/]+/.test(pathname);
-  const isLabelPage = /^\/admin\/pengiriman\/[^/]+\/label/.test(pathname);
-  const isTrackingPage = /^\/admin\/pengiriman\/[^/]+\/pelacakan/.test(pathname);
-  const isPengembalianPage = pathname.startsWith("/admin/pengiriman/pengembalian");
-  const isPengembalianDetailPage = /^\/admin\/pengiriman\/pengembalian\/[^/]+/.test(pathname);
-  const isPengembalianHasilPage =
-    /^\/admin\/pengiriman\/pengembalian\/[^/]+\/(disetujui|ditolak)/.test(pathname);
+  const notificationCount = notifications.length;
+  const currentMenu =
+    [...MENU_ITEMS]
+      .reverse()
+      .find(
+        (item) =>
+          pathname === item.href || pathname.startsWith(`${item.href}/`),
+      ) ?? MENU_ITEMS[0];
+  const currentLabel = pathname.startsWith("/admin/profil")
+    ? "Profil Admin"
+    : currentMenu.label;
 
   return (
-    <div className="flex min-h-screen bg-[#f4f7fb]">
+    <div className="flex min-h-screen bg-admin-surface">
       <aside
         className={`${
           sidebarOpen ? "w-64" : "w-0"
-        } overflow-hidden bg-[#0d47b8] text-white transition-all duration-300 flex flex-col`}
+        } flex shrink-0 flex-col overflow-hidden bg-admin-navy text-white transition-all duration-300`}
       >
-        <div className="px-6 py-5 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-white/15 flex items-center justify-center">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M22 10L12 5L2 10L12 15L22 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M6 12V16C6 17.6569 8.68629 19 12 19C15.3137 19 18 17.6569 18 16V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M22 10V16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <div className="flex h-20 items-center border-b border-white/10 px-6">
+          <Link href="/admin" className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/15">
+              <svg
+                width="21"
+                height="21"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden
+              >
+                <path
+                  d="M22 10L12 5L2 10L12 15L22 10Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M6 12V16C6 17.6569 8.68629 19 12 19C15.3137 19 18 17.6569 18 16V12"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M22 10V16"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
-            </div>
-            <div>
-              <div className="text-base font-bold leading-tight">Schooly Shop</div>
-              <div className="text-xs text-blue-100/90 leading-tight">Admin Management</div>
-            </div>
-          </div>
+            </span>
+            <span>
+              <span className="block text-base font-bold leading-tight">
+                Schooly Shop
+              </span>
+              <span className="block text-xs leading-tight text-blue-100/90">
+                Admin Management
+              </span>
+            </span>
+          </Link>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {MENU_ITEMS.map((item) => {
-            if (item.children && isPesananPage) {
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition ${
-                    isActive(item.href)
-                      ? "bg-[#2563eb] font-semibold"
-                      : "hover:bg-white/10 font-medium"
-                  }`}
-                >
-                  <MenuIcon name={item.icon} className="shrink-0 text-blue-100" />
-                  <MenuLabel item={item} />
-                </Link>
-              );
-            }
-
             if (item.children) {
               const parentActive = pathname === item.href;
               return (
                 <div key={item.href} className="space-y-1">
                   <div
                     className={`flex items-center rounded-lg text-sm transition ${
-                      parentActive ? "bg-[#2563eb] font-semibold" : "hover:bg-white/10 font-medium"
+                      parentActive
+                        ? "bg-admin-active font-semibold"
+                        : "font-medium hover:bg-white/10"
                     }`}
                   >
-                    <Link href={item.href} className="flex flex-1 items-center gap-3 px-4 py-2.5">
-                      <MenuIcon name={item.icon} className="shrink-0 text-blue-100" />
+                    <Link
+                      href={item.href}
+                      className="flex flex-1 items-center gap-3 px-4 py-2.5"
+                    >
+                      <MenuIcon
+                        name={item.icon}
+                        className="shrink-0 text-blue-100"
+                      />
                       <MenuLabel item={item} />
                     </Link>
                     <button
                       type="button"
                       onClick={() => setSubmenuOpen((open) => !open)}
                       className="px-3 py-2.5"
-                      aria-label={submenuOpen ? "Sembunyikan submenu" : "Tampilkan submenu"}
+                      aria-label={
+                        submenuOpen ? "Sembunyikan submenu" : "Tampilkan submenu"
+                      }
                       aria-expanded={submenuOpen}
                     >
                       <svg
@@ -212,10 +300,17 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                         height="14"
                         viewBox="0 0 24 24"
                         fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                        className={`transition-transform ${submenuOpen ? "" : "-rotate-90"}`}
+                        className={`transition-transform ${
+                          submenuOpen ? "" : "-rotate-90"
+                        }`}
                       >
-                        <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <path
+                          d="M6 9L12 15L18 9"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -230,26 +325,13 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                           <Link
                             key={child.href}
                             href={child.href}
-                            className={`flex items-center gap-2.5 pl-6 pr-4 py-2 rounded-lg text-[13px] transition ${
+                            className={`flex items-center gap-2.5 rounded-lg py-2 pl-9 pr-4 text-[13px] transition ${
                               childActive
-                                ? "bg-[#2563eb] font-semibold text-white"
-                                : "text-blue-100 hover:bg-white/10 font-medium"
+                                ? "bg-admin-active font-semibold text-white"
+                                : "font-medium text-blue-100 hover:bg-white/10"
                             }`}
                           >
-                            {child.href === "/admin/produk" ? (
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M21 8V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <rect x="3" y="3" width="18" height="5" rx="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M10 12H14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            ) : (
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M8 3L12 10H3L8 3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <circle cx="17" cy="7" r="3" stroke="currentColor" strokeWidth="2" />
-                                <rect x="13" y="13" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            )}
-                            <span>{child.label}</span>
+                            {child.label}
                           </Link>
                         );
                       })}
@@ -263,280 +345,332 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition ${
+                className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm transition ${
                   isActive(item.href)
-                    ? "bg-[#2563eb] font-semibold"
-                    : "hover:bg-white/10 font-medium"
+                    ? "bg-admin-active font-semibold"
+                    : "font-medium hover:bg-white/10"
                 }`}
               >
                 <MenuIcon name={item.icon} className="shrink-0 text-blue-100" />
                 <span className="flex-1">
                   <MenuLabel item={item} />
                 </span>
-                {isActive(item.href) &&
-                  (item.href === "/admin/pesanan" || item.href === "/admin/pengiriman") && (
-                    <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                  )}
               </Link>
             );
           })}
         </nav>
 
-        <div className="border-t border-white/10 p-3">
+        <div className="space-y-3 border-t border-white/10 p-3">
           <button
+            type="button"
             onClick={() => {
               clearSession();
               router.push("/login");
             }}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition text-sm font-medium text-left"
+            className="flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-left text-sm font-medium transition hover:bg-white/10"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-pink-300">
-              <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M16 17L21 12L16 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              className="text-pink-300"
+              aria-hidden
+            >
+              <path
+                d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M16 17L21 12L16 7M21 12H9"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
             <span>Logout</span>
           </button>
+          <div className="flex items-center gap-3 rounded-lg bg-white/10 px-3 py-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-xs font-bold text-admin-navy">
+              {(session.name?.[0] ?? "A").toUpperCase()}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-semibold">
+                {session.name}
+              </span>
+              <span className="block truncate text-xs text-blue-100">
+                {session.email}
+              </span>
+            </span>
+          </div>
         </div>
       </aside>
 
-      <main className="flex-1 min-w-0">
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
-          <div className="flex items-center justify-between gap-4 px-6 py-3">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="text-slate-500 hover:text-slate-900 transition"
-              aria-label="Toggle sidebar"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 12H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M3 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
+      <main className="min-w-0 flex-1">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-slate-200 bg-white px-6">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen((open) => !open)}
+            className="text-slate-500 transition hover:text-slate-900"
+            aria-label="Toggle sidebar"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path
+                d="M3 12H21M3 6H21M3 18H21"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
 
-            <div className="flex-1 max-w-md">
-              <form
-                className="relative"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  const first = searchResults[0];
-                  if (first) {
-                    router.push(first.href);
-                    setSearchQuery("");
-                    setSearchOpen(false);
-                  }
-                }}
+          <div className="hidden items-center gap-2 whitespace-nowrap text-sm text-slate-400 lg:flex">
+            <span>Admin</span>
+            <span>/</span>
+            <span className="font-medium text-slate-700">
+              {currentLabel}
+            </span>
+          </div>
+
+          <div className="max-w-md flex-1">
+            <form
+              className="relative"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const first = searchResults[0];
+                if (first) {
+                  router.push(first.href);
+                  setSearchQuery("");
+                  setSearchOpen(false);
+                }
+              }}
+            >
+              <svg
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden
               >
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
-                  <path d="M20 20L16.65 16.65" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(event) => {
-                    setSearchQuery(event.target.value);
-                    setSearchOpen(true);
-                  }}
-                  onFocus={() => setSearchOpen(true)}
-                  aria-label="Cari menu atau fitur admin"
-                  placeholder={
-                    isLaporanDetailPage
-                      ? "Cari data laporan, nomor pesanan..."
-                      : isLaporanPage
-                      ? "Cari data, nomor pesanan, penjual..."
-                      : isPengembalianHasilPage
-                      ? "Cari ID pesanan, nama pembeli, atau resi..."
-                      : isPengembalianDetailPage
-                        ? "Cari ID pesanan, nama pembeli, atau retur..."
-                      : isPengembalianPage
-                        ? "Cari pesanan, pembeli..."
-                        : isTrackingPage
-                        ? "Cari nomor resi, pesanan, kurir..."
-                        : isLabelPage
-                        ? "Cari resi / paket..."
-                        : isKategoriPage
-                        ? "Cari data kategori, produk, kode sku..."
-                        : isPengirimanDetailPage
-                          ? "Cari resi, pesanan, pembeli..."
-                          : isPesananDetailPage
-                          ? "Cari di Schooly Shop..."
-                          : isPesananPage || isPengirimanPage
-                            ? "Cari data, nomor pesanan..."
-                          : isUserDetailPage
-                            ? "Cari data, ID, transaksi..."
-                            : "Cari fitur, data transaksi, produk..."
-                  }
-                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+                <path
+                  d="M20 20L16.65 16.65"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
                 />
-                {searchOpen && searchQuery.trim() !== "" && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setSearchOpen(false)}
-                      aria-hidden
-                    />
-                    <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl">
-                      {searchResults.length > 0 ? (
-                        searchResults.map((entry) => (
-                          <Link
-                            key={entry.href}
-                            href={entry.href}
-                            onClick={() => {
-                              setSearchQuery("");
-                              setSearchOpen(false);
-                            }}
-                            className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-slate-50"
-                          >
-                            <span className="font-medium text-slate-700">{entry.label}</span>
-                            <span className="text-[11px] text-slate-400">{entry.hint}</span>
-                          </Link>
-                        ))
-                      ) : (
-                        <p className="px-4 py-3 text-sm text-slate-500">Menu tidak ditemukan.</p>
-                      )}
-                    </div>
-                  </>
+              </svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(event) => {
+                  setSearchQuery(event.target.value);
+                  setSearchOpen(true);
+                }}
+                onFocus={() => setSearchOpen(true)}
+                aria-label="Cari menu atau fitur admin"
+                placeholder="Cari pesanan, produk, atau menu..."
+                className="w-full rounded-lg border border-slate-200 py-2 pl-10 pr-4 text-sm outline-none focus:border-transparent focus:ring-2 focus:ring-blue-500"
+              />
+              {searchOpen && searchQuery.trim() !== "" && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setSearchOpen(false)}
+                    aria-hidden
+                  />
+                  <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl">
+                    {searchResults.length > 0 ? (
+                      searchResults.map((entry) => (
+                        <Link
+                          key={entry.href}
+                          href={entry.href}
+                          onClick={() => {
+                            setSearchQuery("");
+                            setSearchOpen(false);
+                          }}
+                          className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-slate-50"
+                        >
+                          <span className="font-medium text-slate-700">
+                            {entry.label}
+                          </span>
+                          <span className="text-[11px] text-slate-400">
+                            {entry.hint}
+                          </span>
+                        </Link>
+                      ))
+                    ) : (
+                      <p className="px-4 py-3 text-sm text-slate-500">
+                        Menu tidak ditemukan.
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
+            </form>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <span className="hidden items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 xl:inline-flex">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              Sistem Integrasi Online
+            </span>
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setNotifOpen((open) => !open);
+                  setProfileOpen(false);
+                }}
+                className="relative text-slate-500 transition hover:text-slate-900"
+                aria-label="Notifikasi"
+                aria-expanded={notifOpen}
+              >
+                <BellIcon className="h-5 w-5" />
+                {notificationCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white ring-2 ring-white">
+                    {notificationCount}
+                  </span>
                 )}
-              </form>
+              </button>
+              {notifOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setNotifOpen(false)}
+                    aria-hidden
+                  />
+                  <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl">
+                    <div className="border-b border-slate-100 px-4 py-3">
+                      <p className="text-sm font-semibold text-slate-900">
+                        Notifikasi
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {notificationCount} perlu ditindaklanjuti
+                      </p>
+                    </div>
+                    {notifications.length === 0 ? (
+                      <p className="px-4 py-4 text-sm text-slate-500">
+                        Tidak ada notifikasi baru.
+                      </p>
+                    ) : (
+                      notifications.map((item) => (
+                        <Link
+                          key={item.id}
+                          href={item.href}
+                          onClick={() => setNotifOpen(false)}
+                          className="block border-b border-slate-100 px-4 py-3 last:border-0 hover:bg-slate-50"
+                        >
+                          <p className="text-sm font-medium text-slate-800">
+                            {item.title}
+                          </p>
+                          <p className="mt-0.5 text-xs text-slate-500">
+                            {item.detail}
+                          </p>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
-            <div className="flex items-center gap-5">
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNotifOpen((open) => !open);
-                    setProfileOpen(false);
-                  }}
-                  className={`relative text-slate-500 hover:text-slate-900 transition ${
-                    isPesananPage
-                      ? "h-9 w-9 rounded-lg border border-slate-200 bg-white flex items-center justify-center"
-                      : ""
-                  }`}
-                  aria-label="Notifikasi"
-                  aria-expanded={notifOpen}
-                >
-                  <BellIcon className="w-5 h-5" />
-                  {notificationCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white ring-2 ring-white">
-                      {notificationCount}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileOpen((open) => !open);
+                  setNotifOpen(false);
+                }}
+                className="block text-left"
+                aria-label="Buka menu profil"
+                aria-expanded={profileOpen}
+              >
+                <span className="flex items-center gap-3 border-l border-slate-200 pl-4">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
+                    {(session.name?.[0] ?? "A").toUpperCase()}
+                  </span>
+                  <span className="hidden text-left sm:block">
+                    <span className="block text-sm font-semibold leading-tight text-slate-900">
+                      {session.name}
                     </span>
-                  )}
-                </button>
-                {notifOpen && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setNotifOpen(false)}
-                      aria-hidden
+                    <span className="block text-xs leading-tight text-slate-500">
+                      Super Admin
+                    </span>
+                  </span>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    className="hidden text-slate-400 sm:block"
+                    aria-hidden
+                  >
+                    <path
+                      d="M6 9L12 15L18 9"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     />
-                    <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl">
-                      <div className="border-b border-slate-100 px-4 py-3">
-                        <p className="text-sm font-semibold text-slate-900">Notifikasi</p>
-                        <p className="text-xs text-slate-500">{notificationCount} belum dibaca</p>
-                      </div>
-                      <Link
-                        href="/admin/pesanan/ORD-002"
-                        onClick={() => setNotifOpen(false)}
-                        className="block border-b border-slate-100 px-4 py-3 hover:bg-slate-50"
-                      >
-                        <p className="text-sm font-medium text-slate-800">Pesanan menunggu verifikasi</p>
-                        <p className="mt-0.5 text-xs text-slate-500">ORD-002 · Ghofuur Ramadhan</p>
-                      </Link>
-                      <Link
-                        href="/admin/pengiriman/pengembalian/ORD-003"
-                        onClick={() => setNotifOpen(false)}
-                        className="block border-b border-slate-100 px-4 py-3 hover:bg-slate-50"
-                      >
-                        <p className="text-sm font-medium text-slate-800">Pengembalian baru diajukan</p>
-                        <p className="mt-0.5 text-xs text-slate-500">ORD-003 · menunggu keputusan admin</p>
-                      </Link>
-                      <Link
-                        href="/admin/produk"
-                        onClick={() => setNotifOpen(false)}
-                        className="block px-4 py-3 hover:bg-slate-50"
-                      >
-                        <p className="text-sm font-medium text-slate-800">Stok produk menipis</p>
-                        <p className="mt-0.5 text-xs text-slate-500">2 produk di bawah batas minimum</p>
-                      </Link>
-                    </div>
-                  </>
-                )}
-              </div>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setProfileOpen((open) => !open);
-                    setNotifOpen(false);
-                  }}
-                  className="block text-left"
-                  aria-label="Buka menu profil"
-                  aria-expanded={profileOpen}
-                  aria-haspopup="menu"
-                >
-                <div className="flex items-center gap-3 pl-5 border-l border-slate-200">
-                  <div className="h-9 w-9 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                    {(session?.name?.[0] ?? "A").toUpperCase()}
-                  </div>
-                  <div className="text-left">
-                    <div className="text-sm font-semibold text-slate-900 leading-tight">{session?.name ?? "Administrator"}</div>
-                    <div className="text-xs text-slate-500 leading-tight">{session?.email ?? "admin@schooly.id"}</div>
-                  </div>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-slate-400">
-                    <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                </div>
-                </button>
-                {profileOpen && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setProfileOpen(false)}
-                      aria-hidden
-                    />
-                    <div
-                      className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl"
-                      role="menu"
-                    >
-                      <div className="border-b border-slate-100 px-4 py-3">
-                        <p className="text-sm font-semibold text-slate-900">{session?.name ?? "Administrator"}</p>
-                        <p className="text-xs text-slate-500">{session?.email ?? "admin@schooly.id"}</p>
-                      </div>
-                      <Link
-                        href="/admin/profil"
-                        role="menuitem"
-                        onClick={() => setProfileOpen(false)}
-                        className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
-                      >
-                        Profil Saya
-                      </Link>
-                      <Link
-                        href="/"
-                        role="menuitem"
-                        onClick={() => setProfileOpen(false)}
-                        className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
-                      >
-                        Lihat Toko
-                      </Link>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setProfileOpen(false);
-                          clearSession();
-                          router.push("/login");
-                        }}
-                        className="block w-full px-4 py-2.5 text-left text-sm font-medium text-red-600 hover:bg-red-50"
-                      >
-                        Logout
-                      </button>
+                </span>
+              </button>
+              {profileOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setProfileOpen(false)}
+                    aria-hidden
+                  />
+                  <div
+                    className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl"
+                    role="menu"
+                  >
+                    <div className="border-b border-slate-100 px-4 py-3">
+                      <p className="text-sm font-semibold text-slate-900">
+                        {session.name}
+                      </p>
+                      <p className="text-xs text-slate-500">{session.email}</p>
                     </div>
-                  </>
-                )}
-              </div>
+                    <Link
+                      href="/admin/profil"
+                      role="menuitem"
+                      onClick={() => setProfileOpen(false)}
+                      className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      Profil Saya
+                    </Link>
+                    <Link
+                      href="/"
+                      role="menuitem"
+                      onClick={() => setProfileOpen(false)}
+                      className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      Lihat Toko
+                    </Link>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        clearSession();
+                        router.push("/login");
+                      }}
+                      className="block w-full px-4 py-2.5 text-left text-sm font-medium text-red-600 hover:bg-red-50"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </header>
@@ -546,4 +680,3 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     </div>
   );
 }
-

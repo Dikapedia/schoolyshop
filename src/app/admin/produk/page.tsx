@@ -1,16 +1,20 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { formatRupiah } from "@/lib/format";
 import {
-  CATEGORY_OPTIONS,
-  SELLER_OPTIONS,
+  createAdminProduct,
+  deleteAdminProduct,
+  getAdminCategories,
   getAdminProducts,
+  updateAdminProduct,
   type AdminProduct,
   type ProductStatus,
 } from "@/api/admin/products";
-
-const initialAdminProducts = getAdminProducts();
+import { getAdminSellers } from "@/api/admin/sellers";
+import { getApiErrorMessage } from "@/api/errors";
+import { ErrorState, LoadingState, StatusBadge } from "@/components/admin/ui";
+import { useAsyncData } from "@/lib/use-async-data";
 
 type EditForm = {
   name: string;
@@ -94,7 +98,18 @@ function ProductThumb({ product }: { product: AdminProduct }) {
 }
 
 export default function KelolaProdukPage() {
-  const [products, setProducts] = useState<AdminProduct[]>(initialAdminProducts);
+  const { data, loading, error: loadError, reload } = useAsyncData(
+    "admin-products",
+    async () => {
+      const [products, categories, sellers] = await Promise.all([
+        getAdminProducts(),
+        getAdminCategories(),
+        getAdminSellers(),
+      ]);
+      return { products, categories, sellers };
+    },
+  );
+  const [products, setProducts] = useState<AdminProduct[]>([]);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("Semua Kategori");
   const [statusFilter, setStatusFilter] = useState("Semua Status");
@@ -105,7 +120,21 @@ export default function KelolaProdukPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState<EditForm>(emptyAddForm);
   const [addError, setAddError] = useState("");
-  const [toast, setToast] = useState(() => initialAdminProducts.some((p) => p.isNew));
+  const [toast, setToast] = useState(false);
+
+  useEffect(() => {
+    if (!data) return;
+    setProducts(data.products); // eslint-disable-line react-hooks/set-state-in-effect
+    setToast(data.products.some((product) => product.isNew));
+  }, [data]);
+
+  if (loading) return <LoadingState label="Memuat data produk..." />;
+  if (loadError || !data) {
+    return <ErrorState message={loadError || "Data produk tidak tersedia."} onRetry={reload} />;
+  }
+
+  const categoryOptions = data.categories.map((category) => category.name);
+  const sellerOptions = data.sellers.map((seller) => seller.name);
 
   const totalProduk = products.length;
   const produkAktif = products.filter((p) => p.status === "Aktif").length;
@@ -199,7 +228,7 @@ export default function KelolaProdukPage() {
     setError("");
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editing || !form) return;
 
     if (!form.name.trim()) {
@@ -215,19 +244,23 @@ export default function KelolaProdukPage() {
       return;
     }
 
-    const updated: AdminProduct = {
-      ...editing,
-      name: form.name.trim(),
-      seller: form.seller,
-      category: form.category,
-      price: Number(form.price),
-      stock: Number(form.stock),
-      description: form.description,
-      status: form.status,
-    };
-
-    setProducts((prev) => prev.map((product) => (product.id === updated.id ? updated : product)));
-    closeEdit();
+    try {
+      const updated = await updateAdminProduct(editing.id, {
+        name: form.name.trim(),
+        seller: form.seller,
+        category: form.category,
+        price: Number(form.price),
+        stock: Number(form.stock),
+        description: form.description,
+        status: form.status,
+      });
+      setProducts((prev) =>
+        prev.map((product) => (product.id === updated.id ? updated : product)),
+      );
+      closeEdit();
+    } catch (cause) {
+      setError(getApiErrorMessage(cause));
+    }
   };
 
   const openAdd = () => {
@@ -244,7 +277,7 @@ export default function KelolaProdukPage() {
     setAddError("");
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!addForm.name.trim()) {
       setAddError("Nama produk wajib diisi.");
       return;
@@ -258,33 +291,41 @@ export default function KelolaProdukPage() {
       return;
     }
 
-    const nextId = products.length > 0 ? Math.max(...products.map((product) => product.id)) + 1 : 1;
+    try {
+      const created = await createAdminProduct({
+        name: addForm.name.trim(),
+        seller: addForm.seller,
+        category: addForm.category,
+        price: Number(addForm.price),
+        stock: Number(addForm.stock),
+        description: addForm.description,
+        status: addForm.status,
+      });
 
-    const newProduct: AdminProduct = {
-      id: nextId,
-      name: addForm.name.trim(),
-      seller: addForm.seller,
-      category: addForm.category,
-      price: Number(addForm.price),
-      stock: Number(addForm.stock),
-      description: addForm.description,
-      status: addForm.status,
-      isNew: true,
-    };
-
-    setProducts((prev) => [...prev.map((product) => ({ ...product, isNew: false })), newProduct]);
-    setSearch("");
-    setCategoryFilter("Semua Kategori");
-    setStatusFilter("Semua Status");
-    setPage(Math.max(1, Math.ceil((products.length + 1) / PAGE_SIZE)));
-    setToast(true);
-    closeAdd();
+      setProducts((prev) => [
+        ...prev.map((product) => ({ ...product, isNew: false })),
+        created,
+      ]);
+      setSearch("");
+      setCategoryFilter("Semua Kategori");
+      setStatusFilter("Semua Status");
+      setPage(Math.max(1, Math.ceil((products.length + 1) / PAGE_SIZE)));
+      setToast(true);
+      closeAdd();
+    } catch (cause) {
+      setAddError(getApiErrorMessage(cause));
+    }
   };
 
-  const handleDelete = (product: AdminProduct) => {
+  const handleDelete = async (product: AdminProduct) => {
     if (!window.confirm(`Hapus produk "${product.name}"?`)) return;
-    setProducts((prev) => prev.filter((item) => item.id !== product.id));
-    setPage(1);
+    try {
+      await deleteAdminProduct(product.id);
+      setProducts((prev) => prev.filter((item) => item.id !== product.id));
+      setPage(1);
+    } catch (cause) {
+      window.alert(getApiErrorMessage(cause));
+    }
   };
 
   const handleRefresh = () => {
@@ -292,6 +333,7 @@ export default function KelolaProdukPage() {
     setCategoryFilter("Semua Kategori");
     setStatusFilter("Semua Status");
     setPage(1);
+    reload();
   };
 
   const handleDownload = () => {
@@ -414,7 +456,7 @@ export default function KelolaProdukPage() {
                 className="appearance-none pl-3 pr-9 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option>Semua Kategori</option>
-                {CATEGORY_OPTIONS.map((category) => (
+                {categoryOptions.map((category) => (
                   <option key={category}>{category}</option>
                 ))}
               </select>
@@ -520,20 +562,7 @@ export default function KelolaProdukPage() {
                     {product.stock}
                   </td>
                   <td className="py-4 px-6">
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                        product.status === "Aktif"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-red-50 text-red-600"
-                      }`}
-                    >
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${
-                          product.status === "Aktif" ? "bg-emerald-500" : "bg-red-500"
-                        }`}
-                      />
-                      {product.status}
-                    </span>
+                    <StatusBadge status={product.status} />
                   </td>
                   <td className="py-4 px-6">
                     <div className="flex items-center gap-1">
@@ -689,7 +718,7 @@ export default function KelolaProdukPage() {
                     onChange={(e) => setForm((prev) => (prev ? { ...prev, seller: e.target.value } : prev))}
                     className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    {SELLER_OPTIONS.map((seller) => (
+                    {sellerOptions.map((seller) => (
                       <option key={seller}>{seller}</option>
                     ))}
                   </select>
@@ -701,7 +730,7 @@ export default function KelolaProdukPage() {
                     onChange={(e) => setForm((prev) => (prev ? { ...prev, category: e.target.value } : prev))}
                     className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    {CATEGORY_OPTIONS.map((category) => (
+                    {categoryOptions.map((category) => (
                       <option key={category}>{category}</option>
                     ))}
                   </select>
@@ -871,7 +900,7 @@ export default function KelolaProdukPage() {
                     onChange={(e) => setAddForm((prev) => ({ ...prev, seller: e.target.value }))}
                     className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    {SELLER_OPTIONS.map((seller) => (
+                    {sellerOptions.map((seller) => (
                       <option key={seller}>{seller}</option>
                     ))}
                   </select>
@@ -883,7 +912,7 @@ export default function KelolaProdukPage() {
                     onChange={(e) => setAddForm((prev) => ({ ...prev, category: e.target.value }))}
                     className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    {CATEGORY_OPTIONS.map((category) => (
+                    {categoryOptions.map((category) => (
                       <option key={category}>{category}</option>
                     ))}
                   </select>
