@@ -8,6 +8,7 @@ import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { useSession } from "@/api/auth";
 import { listOrders } from "@/api/orders";
+import { getProductById } from "@/api/products";
 import { createReviews, type ReviewDraft } from "@/api/reviews";
 
 type ReviewState = {
@@ -77,7 +78,16 @@ function UlasanPageContent() {
           comment: review.comment,
         }),
       );
-      createReviews(session.id, order, drafts);
+      const created = createReviews(session.id, order, drafts);
+      const first = created[0];
+      const product = first ? getProductById(first.productId) : undefined;
+
+      // Arahkan ke toko/produk agar ulasan yang baru dikirim langsung terlihat.
+      if (product) {
+        router.push(`/produk/${product.slug}#ulasan`);
+        return;
+      }
+
       setSubmitted(true);
     } catch {
       setSubmitError("Gagal menyimpan ulasan.");
@@ -97,9 +107,14 @@ function UlasanPageContent() {
               <div className="text-5xl mb-4">⭐</div>
               <h2 className="text-2xl font-bold text-emerald-800">Terima Kasih Atas Ulasan Anda!</h2>
               <p className="mt-2 text-sm text-emerald-700">Ulasan membantu kami meningkatkan layanan.</p>
-              <button onClick={() => router.push("/pesanan")} className="mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
-                Kembali ke Riwayat
-              </button>
+              <div className="mt-4 flex flex-wrap justify-center gap-3">
+                <button onClick={() => router.push("/produk")} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                  Lihat Toko
+                </button>
+                <button onClick={() => router.push("/pesanan")} className="rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">
+                  Kembali ke Riwayat
+                </button>
+              </div>
             </div>
           ) : (
             <>

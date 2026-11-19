@@ -1,8 +1,10 @@
+import { useMemo, useSyncExternalStore } from "react";
 import { z } from "zod";
 import { ApiError } from "./errors";
 import { REVIEWS_KEY } from "./mocks/keys";
 import { readRaw, readUserMap, writeJson } from "./mocks/storage";
 import type { Order } from "./orders";
+import { resolveProductId } from "./products";
 
 export const reviewSchema = z.object({
   orderId: z.string(),
@@ -19,6 +21,23 @@ export type ReviewDraft = {
   rating: number;
   comment: string;
 };
+
+const REVIEWS_EVENT = "schooly:reviews";
+
+function notifyReviewsChanged(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(REVIEWS_EVENT));
+}
+
+function subscribeReviews(callback: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener("storage", callback);
+  window.addEventListener(REVIEWS_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(REVIEWS_EVENT, callback);
+  };
+}
 
 /**
  * Riwayat ulasan user.
@@ -37,6 +56,55 @@ export function listReviews(userId: string): Review[] | null {
 
   const parsed = reviewSchema.array().safeParse(all[userId]);
   return parsed.success ? parsed.data : null;
+}
+
+/**
+ * Semua ulasan untuk satu produk, dari seluruh user.
+ *
+ * Dipakai halaman produk agar ulasan yang baru dikirim langsung terlihat.
+ *
+ * TODO(backend): ganti dengan GET /products/:id/reviews.
+ */
+export function listProductReviews(productId: string): Review[] {
+  const all = readUserMap<unknown>(REVIEWS_KEY);
+  if (!all) return [];
+
+  const normalizedId = resolveProductId(productId);
+  const result: Review[] = [];
+
+  for (const value of Object.values(all)) {
+    const parsed = reviewSchema.array().safeParse(value);
+    if (!parsed.success) continue;
+    result.push(
+      ...parsed.data.filter(
+        (review) => resolveProductId(review.productId) === normalizedId,
+      ),
+    );
+  }
+
+  return result.sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
+}
+
+/**
+ * Hook ulasan produk untuk komponen client.
+ *
+ * Snapshot berupa string agar `useSyncExternalStore` stabil; daftar baru
+ * dibaca ulang saat ada event `storage` atau ulasan baru disimpan.
+ */
+export function useProductReviews(productId: string): Review[] {
+  const snapshot = useSyncExternalStore(
+    subscribeReviews,
+    () => JSON.stringify(listProductReviews(productId)),
+    () => "[]",
+  );
+
+  return useMemo(() => {
+    try {
+      return JSON.parse(snapshot) as Review[];
+    } catch {
+      return [];
+    }
+  }, [snapshot]);
 }
 
 /**
@@ -60,7 +128,7 @@ export function createReviews(
       const draft = byProduct.get(item.productId)!;
       return {
         orderId: order.id,
-        productId: item.productId,
+        productId: resolveProductId(item.productId),
         productName: item.name,
         rating: draft.rating,
         comment: draft.comment || "",
@@ -96,6 +164,7 @@ export function createReviews(
   if (!writeJson(REVIEWS_KEY, all)) {
     throw new ApiError("SERVER", "Gagal menyimpan ulasan.");
   }
+  notifyReviewsChanged();
 
   return newReviews;
 }

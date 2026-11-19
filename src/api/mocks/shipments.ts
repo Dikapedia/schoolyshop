@@ -7,6 +7,7 @@ import type { Tracking } from "../shipments";
  * meneruskan response Biteship/kurir.
  */
 export const TRACKING_MOCK: Omit<Tracking, "order_id"> = {
+  trackingNumber: "RN-20250116-001",
   courier: "JNE Express",
   status: "Dalam Perjalanan",
   history: [

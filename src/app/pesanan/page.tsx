@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { inter } from "@/lib/fonts";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
@@ -10,6 +10,7 @@ import { useSession } from "@/api/auth";
 import {
   listOrders,
   ORDER_TABS,
+  ORDERS_EVENT,
 } from "@/api/orders";
 import { useRouter } from "next/navigation";
 import { site } from "@/lib/site";
@@ -18,10 +19,8 @@ export default function PesananPage() {
   const router = useRouter();
   const session = useSession();
   const hydrated = useHydrated();
-  const orders = useMemo(
-    () => (session ? (listOrders(session.id) ?? []) : []),
-    [session],
-  );
+  const [, setRefreshKey] = useState(0);
+  const orders = session ? (listOrders(session.id) ?? []) : [];
   const [activeTab, setActiveTab] = useState<string>("Semua");
 
   useEffect(() => {
@@ -29,6 +28,20 @@ export default function PesananPage() {
       router.replace("/login?next=/pesanan");
     }
   }, [session, router, hydrated]);
+
+  // Status pesanan disimpan di localStorage; dengar perubahan agar daftar
+  // langsung ikut ter-update setelah konfirmasi terima / pengembalian.
+  useEffect(() => {
+    function refreshOrders() {
+      setRefreshKey((key) => key + 1);
+    }
+    window.addEventListener("storage", refreshOrders);
+    window.addEventListener(ORDERS_EVENT, refreshOrders);
+    return () => {
+      window.removeEventListener("storage", refreshOrders);
+      window.removeEventListener(ORDERS_EVENT, refreshOrders);
+    };
+  }, []);
 
   if (!session) return null;
 
@@ -130,27 +143,34 @@ export default function PesananPage() {
                   </div>
 
                   <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-3">
-                    <button className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/pesanan/invoice?id=${order.id}`)}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    >
                       Cetak Invoice
                     </button>
                     {order.status === "Selesai" && (
                       <>
                         <button
+                          type="button"
                           onClick={() => router.push(`/pesanan/ulasan?id=${order.id}`)}
                           className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
                         >
                           Beri Ulasan
                         </button>
-                        <button className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700">
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/pesanan/lacak?id=${order.id}`)}
+                          className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                        >
                           Lacak Pengiriman
                         </button>
                         <button
-                          onClick={() => router.push(`/pesanan/terima?id=${order.id}`)}
-                          className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                          type="button"
+                          onClick={() => router.push(`/pesanan/retur?id=${order.id}`)}
+                          className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600"
                         >
-                          Pesanan Diterima
-                        </button>
-                        <button className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600">
                           Ajukan Pengembalian
                         </button>
                       </>
@@ -158,21 +178,36 @@ export default function PesananPage() {
                     {order.status === "Dikirim" && (
                       <>
                         <button
+                          type="button"
                           onClick={() => router.push(`/pesanan/lacak?id=${order.id}`)}
                           className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
                         >
                           Lacak Pengiriman
                         </button>
                         <button
+                          type="button"
                           onClick={() => router.push(`/pesanan/terima?id=${order.id}`)}
                           className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
                         >
                           Pesanan Diterima
                         </button>
-                        <button className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600">
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/pesanan/retur?id=${order.id}`)}
+                          className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600"
+                        >
                           Ajukan Pengembalian
                         </button>
                       </>
+                    )}
+                    {order.status === "Dalam Pengembalian" && (
+                      <button
+                        type="button"
+                        onClick={() => router.push("/pesanan/status-pengembalian")}
+                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                      >
+                        Lihat Status Pengembalian
+                      </button>
                     )}
                   </div>
                 </div>

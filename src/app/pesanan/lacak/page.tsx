@@ -1,21 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { inter } from "@/lib/fonts";
 import { useHydrated } from "@/lib/use-hydrated";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { useSession } from "@/api/auth";
-import { trackShipment, type Tracking } from "@/api/shipments";
+import { trackShipment } from "@/api/shipments";
 
 export default function LacakPengirimanPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center text-slate-500">
+          Memuat…
+        </div>
+      }
+    >
+      <LacakPengirimanRoute />
+    </Suspense>
+  );
+}
+
+function LacakPengirimanRoute() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get("id") ?? "";
+  // `key` memastikan form ter-reset saat membuka pesanan lain dari riwayat.
+  return <LacakPengirimanContent key={id} initialQuery={id} />;
+}
+
+function LacakPengirimanContent({ initialQuery }: { initialQuery: string }) {
   const router = useRouter();
   const session = useSession();
   const hydrated = useHydrated();
-  const [tracking, setTracking] = useState<Tracking | null>(null);
-  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState(initialQuery);
+  const [submittedQuery, setSubmittedQuery] = useState(initialQuery);
   const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+  const tracking = submittedQuery ? trackShipment(submittedQuery) : null;
 
   useEffect(() => {
     if (hydrated && !session) {
@@ -24,12 +47,25 @@ export default function LacakPengirimanPage() {
   }, [session, router, hydrated]);
 
   function handleTrack() {
-    if (!search.trim()) {
+    const next = query.trim();
+    if (!next) {
       setError("Masukkan nomor resi atau ID pesanan.");
       return;
     }
-    setTracking(trackShipment(search));
+    setSubmittedQuery(next);
     setError("");
+    setCopied(false);
+  }
+
+  async function handleCopy() {
+    if (!tracking) return;
+    try {
+      await navigator.clipboard.writeText(tracking.trackingNumber);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Gagal menyalin nomor resi.");
+    }
   }
 
   if (!session) return null;
@@ -44,8 +80,8 @@ export default function LacakPengirimanPage() {
           {/* Search */}
           <div className="mb-6 flex gap-3">
             <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
               placeholder="Masukkan nomor resi / ID pesanan"
               className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
             />
@@ -81,9 +117,15 @@ export default function LacakPengirimanPage() {
                 <div>
                   <p className="font-bold text-sm">{tracking.order_id}</p>
                   <p className="text-xs text-slate-500">{tracking.courier} • {tracking.status}</p>
+                  <p className="text-xs text-slate-500">Resi: {tracking.trackingNumber}</p>
                 </div>
-                <button className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                  Salin Resi
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  aria-live="polite"
+                >
+                  {copied ? "Tersalin" : "Salin Resi"}
                 </button>
               </div>
               <div className="space-y-4">

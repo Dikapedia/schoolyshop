@@ -1,10 +1,8 @@
 import { z } from "zod";
 import { ORDERS_KEY } from "./mocks/keys";
 import {
-  readRaw,
   readUserCollection,
   readUserMap,
-  writeJson,
   writeUserCollection,
 } from "./mocks/storage";
 
@@ -86,37 +84,58 @@ export function createOrder(input: {
   const byUser = all[input.sessionId] ?? [];
   all[input.sessionId] = [...byUser, order];
   writeUserCollection(ORDERS_KEY, input.sessionId, all[input.sessionId]);
+  notifyOrdersChanged();
 
   return orderId;
+}
+
+/** Event internal agar halaman yang menampilkan pesanan ikut refresh. */
+export const ORDERS_EVENT = "schooly:orders";
+
+function notifyOrdersChanged(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(ORDERS_EVENT));
+}
+
+/**
+ * Ubah status satu pesanan di penyimpanan per-user.
+ *
+ * Semua perubahan status lewat helper ini supaya key yang dipakai selalu
+ * sama dengan `listOrders` dan halaman lain mendapat notifikasi.
+ */
+function updateOrderStatus(
+  userId: string,
+  orderId: string,
+  status: OrderStatus,
+): boolean {
+  const value = readUserCollection<unknown>(ORDERS_KEY, userId);
+  if (value === null) return false;
+
+  const parsed = orderSchema.array().safeParse(value);
+  if (!parsed.success) return false;
+
+  const updated = parsed.data.map((order) =>
+    order.id === orderId ? { ...order, status } : order,
+  );
+  writeUserCollection(ORDERS_KEY, userId, updated);
+  notifyOrdersChanged();
+  return true;
 }
 
 /**
  * Tandai pesanan sudah diterima.
  *
- * Catatan: key `schooly/orders` (garis miring) dipertahankan persis dari
- * implementasi lama agar refactor tidak mengubah perilaku. Bug key ini
- * dicatat terpisah di docs/frontend-needs.md dan tidak diperbaiki diam-diam.
- *
  * TODO(backend): ganti dengan POST /orders/:id/receive.
  */
-export function markOrderReceived(userId: string, orderId: string): void {
-  const legacyKey = "schooly/orders";
-  const raw = readRaw(legacyKey);
-  if (!raw) return;
+export function markOrderReceived(userId: string, orderId: string): boolean {
+  return updateOrderStatus(userId, orderId, "Selesai");
+}
 
-  try {
-    const all = JSON.parse(raw) as unknown;
-    if (!all || typeof all !== "object" || Array.isArray(all)) return;
-
-    const byUser = all as Record<string, unknown>;
-    const list = Array.isArray(byUser[userId])
-      ? (byUser[userId] as Order[])
-      : [];
-    byUser[userId] = list.map((order) =>
-      order.id === orderId ? { ...order, status: "Selesai" } : order,
-    );
-    writeJson(legacyKey, byUser);
-  } catch {
-    // Perilaku lama juga mengabaikan kegagalan pembacaan/penulisan.
-  }
+/**
+ * Tandai pesanan sedang dalam proses pengembalian.
+ *
+ * TODO(backend): ganti dengan POST /orders/:id/return.
+ */
+export function markOrderReturning(userId: string, orderId: string): boolean {
+  return updateOrderStatus(userId, orderId, "Dalam Pengembalian");
 }

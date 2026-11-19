@@ -40,6 +40,7 @@ function TerimaPesananContent() {
   }, [session, id]);
 
   const [confirmed, setConfirmed] = useState(false);
+  const [confirmError, setConfirmError] = useState("");
 
   useEffect(() => {
     if (hydrated && !session) {
@@ -48,9 +49,13 @@ function TerimaPesananContent() {
   }, [session, router, hydrated]);
 
   function handleConfirm() {
-    if (!session) return;
+    if (!session || !order) return;
+    if (!markOrderReceived(session.id, order.id)) {
+      setConfirmError("Gagal menyimpan status pesanan. Silakan coba lagi.");
+      return;
+    }
+    setConfirmError("");
     setConfirmed(true);
-    markOrderReceived(session.id, order?.id ?? "");
   }
 
   if (!session) return null;
@@ -133,6 +138,11 @@ function TerimaPesananContent() {
               <p className="mt-2 text-center text-xs text-slate-500">
                 Dengan mengkonfirmasi, Anda menyatakan telah menerima pesanan dalam kondisi baik.
               </p>
+              {confirmError && (
+                <p className="mt-2 text-center text-xs font-semibold text-red-600">
+                  {confirmError}
+                </p>
+              )}
             </div>
           ) : (
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-center">

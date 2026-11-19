@@ -8,7 +8,7 @@ import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { formatRupiah } from "@/lib/format";
 import { useSession } from "@/api/auth";
-import { listOrders } from "@/api/orders";
+import { listOrders, markOrderReturning } from "@/api/orders";
 import { createReturn } from "@/api/returns";
 
 export default function ReturPage() {
@@ -69,6 +69,7 @@ function ReturPageContent() {
         orderId: order.id,
         items,
       });
+      markOrderReturning(session.id, order.id);
       setSubmitted(true);
     } catch {
       setSubmitError("Gagal menyimpan permintaan pengembalian.");
@@ -87,9 +88,14 @@ function ReturPageContent() {
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-center">
               <h2 className="text-2xl font-bold text-emerald-800">Permintaan Pengembalian Dikirim</h2>
               <p className="mt-2 text-sm text-emerald-700">Terima kasih, tim kami akan memproses pengembalian Anda.</p>
-              <button onClick={() => router.push("/pesanan")} className="mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
-                Kembali ke Riwayat
-              </button>
+              <div className="mt-4 flex flex-wrap justify-center gap-3">
+                <button onClick={() => router.push("/pesanan/status-pengembalian")} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                  Lihat Status Pengembalian
+                </button>
+                <button onClick={() => router.push("/pesanan")} className="rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">
+                  Kembali ke Riwayat
+                </button>
+              </div>
             </div>
           ) : (
             <>

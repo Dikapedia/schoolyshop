@@ -8,6 +8,7 @@ export type TrackingHistory = {
 
 export type Tracking = {
   order_id: string;
+  trackingNumber: string;
   courier: string;
   status: string;
   history: TrackingHistory[];
