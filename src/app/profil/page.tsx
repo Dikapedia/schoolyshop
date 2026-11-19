@@ -14,6 +14,37 @@ import { getProfilePhone, saveProfilePhone } from "@/api/users";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 
+function EyeToggle({
+  visible,
+  onToggle,
+  label,
+}: {
+  visible: boolean;
+  onToggle: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={visible ? `Sembunyikan ${label}` : `Tampilkan ${label}`}
+      onClick={onToggle}
+      className="absolute right-2 top-2.5 grid h-6 w-6 place-items-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+    >
+      {visible ? (
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18M9 9a3 3 0 016 0c.5 0 1 .1 1.5.3M13.5 13.5a3 3 0 00-4.2-4.2" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-.425.546-.655 1.066-.786 1.5" />
+        </svg>
+      ) : (
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-.425.546-.655 1.066-.786 1.5" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 export default function ProfilPage() {
   const session = useSession();
 
@@ -30,8 +61,14 @@ export default function ProfilPage() {
   const [passwordLama, setPasswordLama] = useState("");
   const [passwordBaru, setPasswordBaru] = useState("");
   const [konfirmasiPassword, setKonfirmasiPassword] = useState("");
+  const [showLama, setShowLama] = useState(false);
+  const [showBaru, setShowBaru] = useState(false);
+  const [showKonfirmasi, setShowKonfirmasi] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
   const [error, setError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
   const [success, setSuccess] = useState("");
 
   const initializedRef = useRef(false);
@@ -98,23 +135,6 @@ export default function ProfilPage() {
       setLoading(false);
       return;
     }
-    if (passwordBaru && passwordBaru !== konfirmasiPassword) {
-      setError("Kata sandi baru tidak cocok");
-      setLoading(false);
-      return;
-    }
-
-    if (passwordBaru && passwordBaru.length < 8) {
-      setError("Kata sandi minimal 8 karakter");
-      setLoading(false);
-      return;
-    }
-
-    if (passwordBaru && !passwordLama.trim()) {
-      setError("Kata sandi lama wajib diisi.");
-      setLoading(false);
-      return;
-    }
 
     setTimeout(() => {
       if (session) {
@@ -126,26 +146,46 @@ export default function ProfilPage() {
         saveSession(updated, true);
       }
 
-      if (passwordBaru) {
-        try {
-          changePassword({
-            userId: session?.id ?? "",
-            currentPassword: passwordLama,
-            newPassword: passwordBaru,
-          });
-        } catch (err) {
-          setError(getApiErrorMessage(err));
-          setLoading(false);
-          return;
-        }
-      }
-
       setSuccess("Profil berhasil diperbarui.");
+      setLoading(false);
+    }, 500);
+  }
+
+  async function handleChangePassword() {
+    setPasswordError("");
+    setPasswordSuccess("");
+
+    if (!passwordLama.trim() || !passwordBaru.trim() || !konfirmasiPassword.trim()) {
+      setPasswordError("Kata sandi lama, baru, dan konfirmasi wajib diisi.");
+      return;
+    }
+    if (passwordBaru.length < 8) {
+      setPasswordError("Kata sandi baru minimal 8 karakter.");
+      return;
+    }
+    if (passwordBaru !== konfirmasiPassword) {
+      setPasswordError("Konfirmasi kata sandi tidak cocok.");
+      return;
+    }
+    if (!session) return;
+
+    setPasswordLoading(true);
+    try {
+      await changePassword({
+        userId: session.id,
+        currentPassword: passwordLama,
+        newPassword: passwordBaru,
+      });
       setPasswordLama("");
       setPasswordBaru("");
       setKonfirmasiPassword("");
-      setLoading(false);
-    }, 500);
+      setPasswordError("");
+      setPasswordSuccess("Kata sandi berhasil diperbarui.");
+    } catch (err) {
+      setPasswordError(getApiErrorMessage(err));
+    } finally {
+      setPasswordLoading(false);
+    }
   }
 
   return (
@@ -411,37 +451,67 @@ export default function ProfilPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
                         <input
-                          type="password"
+                          type={showLama ? "text" : "password"}
                           value={passwordLama}
                           onChange={(e) => setPasswordLama(e.target.value)}
-                          className="w-full rounded-lg border border-slate-300 bg-slate-50 pl-9 pr-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className="w-full rounded-lg border border-slate-300 bg-slate-50 pl-9 pr-9 py-2 text-sm text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                        <EyeToggle
+                          visible={showLama}
+                          onToggle={() => setShowLama((v) => !v)}
+                          label="kata sandi lama"
                         />
                       </div>
                     </div>
                     <div>
                       <label className="mb-1.5 block text-sm font-medium text-slate-700">Kata Sandi Baru</label>
-                      <input
-                        type="password"
-                        value={passwordBaru}
-                        onChange={(e) => setPasswordBaru(e.target.value)}
-                        placeholder="Minimal 8 karakter"
-                        className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
+                      <div className="relative">
+                        <input
+                          type={showBaru ? "text" : "password"}
+                          value={passwordBaru}
+                          onChange={(e) => setPasswordBaru(e.target.value)}
+                          placeholder="Minimal 8 karakter"
+                          className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 pr-9 py-2 text-sm text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                        <EyeToggle
+                          visible={showBaru}
+                          onToggle={() => setShowBaru((v) => !v)}
+                          label="kata sandi baru"
+                        />
+                      </div>
                     </div>
                     <div>
                       <label className="mb-1.5 block text-sm font-medium text-slate-700">Konfirmasi Sandi Baru</label>
-                      <input
-                        type="password"
-                        value={konfirmasiPassword}
-                        onChange={(e) => setKonfirmasiPassword(e.target.value)}
-                        placeholder="Ulangi kata sandi"
-                        className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
+                      <div className="relative">
+                        <input
+                          type={showKonfirmasi ? "text" : "password"}
+                          value={konfirmasiPassword}
+                          onChange={(e) => setKonfirmasiPassword(e.target.value)}
+                          placeholder="Ulangi kata sandi"
+                          className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 pr-9 py-2 text-sm text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                        <EyeToggle
+                          visible={showKonfirmasi}
+                          onToggle={() => setShowKonfirmasi((v) => !v)}
+                          label="konfirmasi kata sandi"
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="mt-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3 text-xs text-slate-600">
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      {passwordError && (
+                        <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                          {passwordError}
+                        </div>
+                      )}
+                      {passwordSuccess && (
+                        <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+                          {passwordSuccess}
+                        </div>
+                      )}
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
                       <span className="flex items-center gap-1">
                         <svg className="h-3.5 w-3.5 text-green-500" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
@@ -460,41 +530,15 @@ export default function ProfilPage() {
                         </svg>
                         Karakter spesial
                       </span>
+                      </div>
                     </div>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (!passwordLama.trim() || !passwordBaru.trim() || !konfirmasiPassword.trim()) {
-                          setError("Kata sandi lama, baru, dan konfirmasi wajib diisi.");
-                          return;
-                        }
-                        if (passwordBaru.length < 8) {
-                          setError("Kata sandi baru minimal 8 karakter.");
-                          return;
-                        }
-                        if (passwordBaru !== konfirmasiPassword) {
-                          setError("Konfirmasi kata sandi tidak cocok.");
-                          return;
-                        }
-                        try {
-                          changePassword({
-                            userId: session?.id ?? "",
-                            currentPassword: passwordLama,
-                            newPassword: passwordBaru,
-                          });
-                        } catch (error) {
-                          setError(getApiErrorMessage(error));
-                          return;
-                        }
-                        setPasswordLama("");
-                        setPasswordBaru("");
-                        setKonfirmasiPassword("");
-                        setError("");
-                        setSuccess("Kata sandi berhasil diperbarui.");
-                      }}
-                      className="rounded-lg border border-blue-600 px-5 py-2 font-medium text-blue-600 transition hover:bg-blue-50"
+                      disabled={passwordLoading}
+                      onClick={handleChangePassword}
+                      className="shrink-0 rounded-lg border border-blue-600 px-5 py-2 font-medium text-blue-600 transition hover:bg-blue-50 disabled:opacity-50"
                     >
-                      Ubah Kata Sandi
+                      {passwordLoading ? "Menyimpan..." : "Ubah Kata Sandi"}
                     </button>
                   </div>
                 </div>
