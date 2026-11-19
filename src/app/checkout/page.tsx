@@ -74,7 +74,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (items.length === 0) {
-      router.replace("/keranjang");
+      router.replace("/pesanan");
     }
   }, [items, router]);
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { inter } from "@/lib/fonts";
@@ -13,12 +14,14 @@ import {
   clearPendingCheckout,
   getPendingCheckout,
   listShippingOptions,
+  savePendingCheckout,
 } from "@/api/checkout";
 import { formatRupiah } from "@/lib/format";
 import { clearCart, useCart } from "@/api/cart";
 import { getProductById } from "@/api/products";
 import { listPaymentBanks } from "@/api/payments";
 import { createOrder } from "@/api/orders";
+import { getDemoAddress, listAddresses } from "@/api/addresses";
 
 type PaymentMethod = "va" | "ewallet" | "qris" | "card";
 
@@ -60,10 +63,26 @@ export default function PembayaranPage() {
   const lines = useCart();
   const hydrated = useHydrated();
 
-  const pending = useMemo(
-    () => (session ? getPendingCheckout() : null),
-    [session],
-  );
+  const pending = useMemo(() => {
+    if (!session) return null;
+    const existing = getPendingCheckout();
+    if (existing) return existing;
+
+    // Rebuild draft dari cart default jika belum ada
+    if (lines.length === 0) return null;
+
+    const addresses = listAddresses(session.id);
+    const primary = addresses.find((a) => a.isPrimary) ?? addresses[0] ?? getDemoAddress();
+    const defaultShipping = listShippingOptions()[0];
+
+    const rebuilt = {
+      addressId: primary?.id,
+      shippingId: defaultShipping?.id,
+      sessionId: session.id,
+    };
+    savePendingCheckout(rebuilt);
+    return rebuilt;
+  }, [session, lines]);
   const shipping = pending?.shippingId ?? "";
   const [countdown, setCountdown] = useState(3582);
   const [selectedBankId, setSelectedBankId] = useState<string>(
@@ -106,16 +125,46 @@ export default function PembayaranPage() {
   const invoiceId = hydrated ? createInvoiceId() : "";
 
   useEffect(() => {
-    if (hydrated && (items.length === 0 || !pending)) {
-      router.replace("/checkout");
+    if (hydrated && items.length === 0 && !pending) {
+      router.replace("/pesanan");
     }
   }, [hydrated, items, pending, router]);
 
   if (!session) return null;
   if (!pending) return null;
+  if (items.length === 0) {
+    return (
+      <div className={`${inter.className} min-h-screen bg-[#f5f7ff] text-slate-900`}>
+        <SiteHeader />
+        <main className="mx-auto w-full max-w-2xl px-4 py-10 text-center">
+          <h1 className="text-lg font-bold">Keranjang Kosong</h1>
+          <p className="mt-2 text-sm text-slate-600">
+            Tidak ada barang untuk dibayar. Silakan kembali ke beranda atau lihat riwayat pesanan Anda.
+          </p>
+          <div className="mt-5 flex justify-center gap-3">
+            <Link href="/" className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">
+              Ke Beranda
+            </Link>
+            <Link href="/pesanan" className="rounded-lg border border-blue-600 px-4 py-2 text-sm font-bold text-blue-600 hover:bg-blue-50">
+              Riwayat Pesanan
+            </Link>
+          </div>
+        </main>
+        <SiteFooter />
+      </div>
+    );
+  }
+
+  function extendCountdown() {
+    setCountdown(3600);
+  }
 
   async function handleBayar() {
     if (!session || !pending) return;
+    if (countdown <= 0) {
+      extendCountdown();
+      return;
+    }
     setIsProcessing(true);
     try {
       const orderId = createOrder({
@@ -358,13 +407,17 @@ export default function PembayaranPage() {
               </div>
 
               <button
-                onClick={handleBayar}
-                disabled={isProcessing || countdown <= 0}
+                onClick={countdown <= 0 ? extendCountdown : handleBayar}
+                disabled={isProcessing}
                 className={`mt-5 w-full rounded-xl py-3.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed ${
                   isProcessing ? "bg-blue-400" : "bg-blue-600"
                 }`}
               >
-                {isProcessing ? "Memproses..." : `Bayar Sekarang — ${formatRupiah(total)}`}
+                {countdown <= 0
+                  ? "Perpanjang Waktu Bayar"
+                  : isProcessing
+                    ? "Memproses..."
+                    : `Bayar Sekarang — ${formatRupiah(total)}`}
               </button>
               <p className="mt-2 text-center text-[11px] text-slate-500">Transaksi dienkripsi 256-bit SSL & Terverifikasi Midtrans Payment Gateway</p>
             </div>
