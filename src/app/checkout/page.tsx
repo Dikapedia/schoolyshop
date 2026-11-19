@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { inter } from "@/lib/fonts";
 import { site } from "@/lib/site";
+import { useHydrated } from "@/lib/use-hydrated";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { useSession } from "@/api/auth";
 import {
   getDemoAddress,
   listAddresses,
-  saveAddresses,
   type Address,
 } from "@/api/addresses";
 import { listShippingOptions, savePendingCheckout } from "@/api/checkout";
@@ -42,37 +43,31 @@ export default function CheckoutPage() {
 
   const subtotal = items.reduce((s, i) => s + i.subtotal, 0);
 
-  const [step, setStep] = useState<StepIndex>(1);
-  const [addresses, setAddresses] = useState<Address[]>([]);
-  const [selectedAddress, setSelectedAddress] = useState<string>("");
-  const [shipping, setShipping] = useState<string>("");
+  const [step] = useState<StepIndex>(1);
 
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const hydrated = useHydrated();
+
+  const addresses = useMemo<Address[]>(() => {
+    if (!session) return [];
+    const all = listAddresses(session.id);
+    return all.length > 0 ? all : [getDemoAddress()];
+  }, [session]);
+
+  const [selectedAddressOverride, setSelectedAddress] = useState("");
+  const [shippingOverride, setShipping] = useState("");
+  const selectedAddress =
+    selectedAddressOverride ||
+    addresses.find((a) => a.isPrimary)?.id ||
+    addresses[0]?.id ||
+    "";
+  const shipping = shippingOverride || SHIPPING_OPTIONS[0]?.id || "";
 
   useEffect(() => {
-    if (!session && mounted) {
+    if (hydrated && !session) {
       const next = "/checkout";
       router.replace("/login?next=" + encodeURIComponent(next));
-      return;
     }
-    if (!session) return;
-    const all = listAddresses(session.id);
-    if (all.length > 0) {
-      setAddresses(all);
-    } else {
-      // Seed demo address (alamat penerima/pembeli)
-      const demo = getDemoAddress();
-      setAddresses([demo]);
-      saveAddresses(session.id, [demo]);
-    }
-    const chosen = all.find((a) => a.isPrimary);
-    if (chosen) setSelectedAddress(chosen.id);
-    else setSelectedAddress("address-demo");
-    setShipping("jne");
-  }, [session, router, mounted]);
+  }, [session, router, hydrated]);
 
   const shippingFee = SHIPPING_OPTIONS.find((s) => s.id === shipping)?.fee ?? 0;
   const total = subtotal + shippingFee;
@@ -102,13 +97,13 @@ export default function CheckoutPage() {
       <main className="flex-1">
         <div className="mx-auto w-full max-w-6xl px-4 py-5">
           <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-1.5 text-xs text-slate-500">
-            <a href="/" className="hover:text-blue-600">
+            <Link href="/" className="hover:text-blue-600">
               Beranda
-            </a>
+            </Link>
             <span className="text-slate-300">/</span>
-            <a href="/keranjang" className="hover:text-blue-600">
+            <Link href="/keranjang" className="hover:text-blue-600">
               Keranjang Belanja
-            </a>
+            </Link>
             <span className="text-slate-300">/</span>
             <span className="font-medium text-slate-700">Checkout</span>
           </nav>

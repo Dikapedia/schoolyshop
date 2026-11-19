@@ -68,7 +68,15 @@ export default function ProductDetail({ product, related }: { product: Product; 
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
 
-  const thumbnails = useMemo(() => [0, 1, 2, 3], []);
+  const gallery = useMemo(
+    () =>
+      product.images && product.images.length > 0
+        ? product.images
+        : product.image
+          ? [product.image]
+          : [],
+    [product],
+  );
 
   function handleAdd(): boolean {
     if (!addToCartWithAuth(product.id, qty)) {
@@ -126,9 +134,9 @@ export default function ProductDetail({ product, related }: { product: Product; 
             <div className="grid gap-0 lg:grid-cols-[1.05fr_1fr]">
               <div className="border-b border-slate-200 p-3 sm:p-4 lg:border-b-0 lg:border-r">
                 <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-[linear-gradient(135deg,#f1f5f9,#e2e8f0)]">
-                  {product.image ? (
+                  {gallery[activeThumb] ? (
                     <Image
-                      src={product.image}
+                      src={gallery[activeThumb]}
                       alt={product.name}
                       fill
                       sizes="(min-width:1024px) 560px, 100vw"
@@ -161,9 +169,9 @@ export default function ProductDetail({ product, related }: { product: Product; 
                 </div>
 
                 <div className="mt-3 grid grid-cols-4 gap-2">
-                  {thumbnails.map((i) => (
+                  {gallery.map((src, i) => (
                     <button
-                      key={i}
+                      key={src}
                       type="button"
                       onClick={() => setActiveThumb(i)}
                       aria-label={`Gambar ${i + 1}`}
@@ -174,13 +182,7 @@ export default function ProductDetail({ product, related }: { product: Product; 
                           : "border-slate-200 hover:border-slate-300",
                       )}
                     >
-                      {product.image ? (
-                        <Image src={product.image} alt="" fill className="object-cover opacity-90" sizes="140px" />
-                      ) : (
-                        <span className="grid h-full place-items-center text-slate-300">
-                          <ImageIcon width={20} height={20} />
-                        </span>
-                      )}
+                      <Image src={src} alt="" fill className="object-cover opacity-90" sizes="140px" />
                     </button>
                   ))}
                 </div>

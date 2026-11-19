@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useSession } from "@/api/auth";
 import {
@@ -14,6 +14,7 @@ import {
 import { useRouter } from "next/navigation";
 import { inter } from "@/lib/fonts";
 import { site } from "@/lib/site";
+import { useHydrated } from "@/lib/use-hydrated";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 
@@ -28,34 +29,29 @@ const emptyForm = {
 export default function AlamatPengirimanPage() {
   const session = useSession();
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
+  const hydrated = useHydrated();
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!session && mounted) {
+    if (hydrated && !session) {
       router.replace("/login?next=" + encodeURIComponent("/profil/alamat"));
     }
-  }, [session, router, mounted]);
+  }, [session, router, hydrated]);
 
-  const [addresses, setAddresses] = useState<Address[]>(() =>
-    session && mounted ? listAddresses(session.id) : []);
+  const initialAddresses = useMemo(() => {
+    if (!session) return [];
+    const all = listAddresses(session.id);
+    return all.length > 0 ? all : [getDemoAddress()];
+  }, [session]);
 
-  // Populate demo address if none
+  const [savedAddresses, setAddresses] = useState<Address[] | null>(null);
+  const addresses = savedAddresses ?? initialAddresses;
+
+  // Persist addresses per‑user setelah ada perubahan
   useEffect(() => {
-    if (session && addresses.length === 0) {
-      setAddresses([getDemoAddress(`address-demo-${Date.now()}`)]);
+    if (session && savedAddresses) {
+      saveAddresses(session.id, savedAddresses);
     }
-  }, [session, addresses.length]);
-
-  // Persist addresses per‑user
-  useEffect(() => {
-    if (session) {
-      saveAddresses(session.id, addresses);
-    }
-  }, [addresses, session]);
+  }, [savedAddresses, session]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -99,8 +95,8 @@ export default function AlamatPengirimanPage() {
     }
 
     if (editingId) {
-      setAddresses((current) =>
-        current.map((address) =>
+      setAddresses(
+        addresses.map((address) =>
           address.id === editingId
             ? {
                 ...address,
@@ -124,17 +120,17 @@ export default function AlamatPengirimanPage() {
         badges: ["Rumah"],
         isPrimary: addresses.length === 0,
       };
-      setAddresses((current) => [...current, newAddress]);
+      setAddresses([...addresses, newAddress]);
     }
     closeForm();
   }
 
   function setPrimary(id: string) {
-    setAddresses((current) => setPrimaryAddress(current, id));
+    setAddresses(setPrimaryAddress(addresses, id));
   }
 
   function handleRemoveAddress(id: string) {
-    setAddresses((current) => removeAddress(current, id));
+    setAddresses(removeAddress(addresses, id));
   }
 
   return (

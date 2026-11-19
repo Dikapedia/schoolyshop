@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { ORDERS_KEY } from "./mocks/keys";
-import { readRaw, readUserCollection, writeJson } from "./mocks/storage";
+import {
+  readRaw,
+  readUserCollection,
+  readUserMap,
+  writeJson,
+  writeUserCollection,
+} from "./mocks/storage";
 
 export const orderStatusSchema = z.enum([
   "Menunggu Pembayaran",
@@ -52,6 +58,36 @@ export function listOrders(userId: string): Order[] | null {
 
   const parsed = orderSchema.array().safeParse(value);
   return parsed.success ? parsed.data : null;
+}
+
+/**
+ * Buat pesanan baru dari draft checkout (mock / frontend-only).
+ *
+ * TODO(backend): ganti dengan POST /orders dan buat order via Midtrans.
+ */
+export function createOrder(input: {
+  sessionId: string;
+  items: OrderItem[];
+  addressId?: string;
+  shippingId?: string;
+  total: number;
+  paymentMethod: string;
+}): string {
+  const orderId = `order-${Date.now()}`;
+  const order: Order = {
+    id: orderId,
+    date: new Date().toISOString(),
+    items: input.items,
+    total: input.total,
+    status: "Menunggu Pembayaran",
+  };
+
+  const all = readUserMap<Order[]>(ORDERS_KEY) ?? {};
+  const byUser = all[input.sessionId] ?? [];
+  all[input.sessionId] = [...byUser, order];
+  writeUserCollection(ORDERS_KEY, input.sessionId, all[input.sessionId]);
+
+  return orderId;
 }
 
 /**

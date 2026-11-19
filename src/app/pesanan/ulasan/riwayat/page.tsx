@@ -1,36 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { inter } from "@/lib/fonts";
+import { useHydrated } from "@/lib/use-hydrated";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { useSession } from "@/api/auth";
-import { listReviews, type Review } from "@/api/reviews";
+import { listReviews } from "@/api/reviews";
 
 export default function UlasanRiwayatPage() {
   const router = useRouter();
   const session = useSession();
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const hydrated = useHydrated();
+  const data = useMemo(
+    () => (session ? listReviews(session.id) : []),
+    [session],
+  );
+  const reviews = data ?? [];
+  const error = session && data === null ? "Gagal memuat ulasan." : "";
 
   useEffect(() => {
-    if (!session) {
+    if (hydrated && !session) {
       router.replace("/login?next=/pesanan/ulasan/riwayat");
-      return;
     }
-    const data = listReviews(session.id);
-    if (data === null) {
-      setError("Gagal memuat ulasan.");
-    } else {
-      setReviews(data);
-    }
-    setLoading(false);
-  }, [session, router]);
+  }, [session, router, hydrated]);
 
   if (!session) return null;
-  if (loading) return <div className="flex min-h-screen items-center justify-center text-slate-500">Memuat...</div>;
   if (error) return <div className="flex min-h-screen items-center justify-center text-slate-500">{error}</div>;
 
   return (

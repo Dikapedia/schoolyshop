@@ -1,48 +1,55 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { inter } from "@/lib/fonts";
+import { useHydrated } from "@/lib/use-hydrated";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { formatRupiah } from "@/lib/format";
 import { useSession } from "@/api/auth";
-import { listOrders, type Order } from "@/api/orders";
+import { listOrders } from "@/api/orders";
 import { createReturn } from "@/api/returns";
-import { site } from "@/lib/site";
 
 export default function ReturPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-slate-500">Memuat…</div>}>
+      <ReturPageContent />
+    </Suspense>
+  );
+}
+
+function ReturPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const session = useSession();
-  const [order, setOrder] = useState<Order | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const hydrated = useHydrated();
+  const id = searchParams.get("id") ?? "";
+
+  const load = useMemo(() => {
+    if (!session) return { order: null, error: "" };
+    if (!id) return { order: null, error: "ID pesanan tidak diberikan." };
+    const list = listOrders(session.id);
+    if (list === null)
+      return { order: null, error: "Gagal membaca data pesanan." };
+    const found = list.find((item) => item.id === id) ?? null;
+    return {
+      order: found,
+      error: found ? "" : "Pesanan tidak ditemukan.",
+    };
+  }, [session, id]);
+  const order = load.order;
+
+  const [submitError, setSubmitError] = useState("");
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
+  const error = submitError || load.error;
 
   useEffect(() => {
-    if (!session) {
+    if (hydrated && !session) {
       router.replace("/login?next=/pesanan/retur");
-      return;
     }
-    const id = new URLSearchParams(window.location.search).get("id");
-    if (!id) {
-      setError("ID pesanan tidak diberikan.");
-      setLoading(false);
-      return;
-    }
-    try {
-      const list = listOrders(session.id);
-      if (list === null) throw new Error();
-      const found = list.find((item) => item.id === id);
-      if (!found) setError("Pesanan tidak ditemukan.");
-      else setOrder(found);
-    } catch {
-      setError("Gagal membaca data pesanan.");
-    } finally {
-      setLoading(false);
-    }
-  }, [session, router]);
+  }, [session, router, hydrated]);
 
   function handleReasonChange(productId: string, value: string) {
     setReasons(prev => ({ ...prev, [productId]: value }));
@@ -54,7 +61,7 @@ export default function ReturPage() {
       .filter(i => reasons[i.productId])
       .map(i => ({ productId: i.productId, name: i.name, qty: i.qty, reason: reasons[i.productId] }));
     if (items.length === 0) {
-      setError("Pilih setidaknya satu item untuk dikembalikan.");
+      setSubmitError("Pilih setidaknya satu item untuk dikembalikan.");
       return;
     }
     try {
@@ -64,12 +71,11 @@ export default function ReturPage() {
       });
       setSubmitted(true);
     } catch {
-      setError("Gagal menyimpan permintaan pengembalian.");
+      setSubmitError("Gagal menyimpan permintaan pengembalian.");
     }
   }
 
   if (!session) return null;
-  if (loading) return <div className="flex min-h-screen items-center justify-center text-slate-500">Memuat...</div>;
   if (error || !order) return <div className="flex min-h-screen items-center justify-center text-slate-500">{error || "Pesanan tidak ditemukan."}</div>;
 
   return (

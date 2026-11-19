@@ -1,39 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { inter } from "@/lib/fonts";
+import { useHydrated } from "@/lib/use-hydrated";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { useSession } from "@/api/auth";
-import {
-  listReturns,
-  type ReturnRequest,
-} from "@/api/returns";
+import { listReturns } from "@/api/returns";
 
 export default function ReturnStatusPage() {
   const router = useRouter();
   const session = useSession();
-  const [returns, setReturns] = useState<ReturnRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const hydrated = useHydrated();
+  const data = useMemo(
+    () => (session ? listReturns(session.id) : []),
+    [session],
+  );
+  const returns = data ?? [];
+  const error =
+    session && data === null ? "Gagal memuat data pengembalian." : "";
 
   useEffect(() => {
-    if (!session) {
+    if (hydrated && !session) {
       router.replace("/login?next=/pesanan/status-pengembalian");
-      return;
     }
-    const data = listReturns(session.id);
-    if (data === null) {
-      setError("Gagal memuat data pengembalian.");
-    } else {
-      setReturns(data);
-    }
-    setLoading(false);
-  }, [session, router]);
+  }, [session, router, hydrated]);
 
   if (!session) return null;
-  if (loading) return <div className="flex min-h-screen items-center justify-center text-slate-500">Memuat...</div>;
   if (error) return <div className="flex min-h-screen items-center justify-center text-slate-500">{error}</div>;
 
   return (

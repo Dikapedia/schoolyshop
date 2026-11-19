@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { inter } from "@/lib/fonts";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { formatRupiah } from "@/lib/format";
+import { useHydrated } from "@/lib/use-hydrated";
 import { useSession } from "@/api/auth";
 import {
   listOrders,
   ORDER_TABS,
-  type Order,
 } from "@/api/orders";
 import { useRouter } from "next/navigation";
 import { site } from "@/lib/site";
@@ -17,16 +17,18 @@ import { site } from "@/lib/site";
 export default function PesananPage() {
   const router = useRouter();
   const session = useSession();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const hydrated = useHydrated();
+  const orders = useMemo(
+    () => (session ? (listOrders(session.id) ?? []) : []),
+    [session],
+  );
   const [activeTab, setActiveTab] = useState<string>("Semua");
 
   useEffect(() => {
-    if (!session) {
+    if (hydrated && !session) {
       router.replace("/login?next=/pesanan");
-      return;
     }
-    setOrders(listOrders(session.id) ?? []);
-  }, [session, router]);
+  }, [session, router, hydrated]);
 
   if (!session) return null;
 

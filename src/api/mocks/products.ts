@@ -9,6 +9,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 120000,
     tag: "Pakaian",
     seller: { label: "Bu Siti (Guru)", role: "Guru" },
+    image: "/products/p1.png",
     description:
       "Seragam batik resmi sekolah dengan motif khas yang dirancang oleh guru seni. Bahan katun premium yang adem, tidak mudah kusut, dan nyaman dipakai seharian. Jahitan rapi serta tersedia dalam berbagai ukuran.",
   },
@@ -20,6 +21,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 145000,
     tag: "Karya",
     seller: { label: "Ahmad (Siswa XI)", role: "Siswa" },
+    image: "/products/p2.png",
     description:
       "Lampu meja belajar berbahan akrilik dengan ukiran CNC presisi. Menggunakan LED hemat energi yang ramah mata. Cocok untuk meja belajar, dekorasi kamar, maupun hadiah. Karya orisinal siswa jurusan teknik.",
   },
@@ -31,6 +33,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 12000,
     tag: "Tulis",
     seller: { label: "Toko Koperasi (Karyawan)", role: "Karyawan" },
+    image: "/products/p3.png",
     description:
       "Paket 3 buku tulis dengan sampul berlogo sekolah. Kertas putih halus yang nyaman untuk menulis dan tidak tembus. Isi 38 lembar per buku, cocok untuk kebutuhan belajar harian.",
   },
@@ -42,6 +45,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 85000,
     tag: "Handmade",
     seller: { label: "Siti (Siswa XII)", role: "Siswa" },
+    image: "/products/p4.png",
     description:
       "Tas kanvas tebal dengan lukisan tangan orisinal, setiap tas memiliki keunikan tersendiri. Kuat menahan beban buku dan perlengkapan sekolah. Cocok untuk gaya kasual sehari-hari.",
   },
@@ -53,6 +57,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 75000,
     tag: "Sport",
     seller: { label: "Pak Budi (Karyawan)", role: "Karyawan" },
+    image: "/products/p5.png",
     description:
       "Kaos olahraga berbahan dry-fit yang cepat menyerap keringat dan menjaga tubuh tetap kering saat beraktivitas. Ringan, elastis, dan nyaman untuk kegiatan olahraga di sekolah.",
   },
@@ -64,6 +69,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 18000,
     tag: "Akrilik",
     seller: { label: "Dina (Siswa X)", role: "Siswa" },
+    image: "/products/p6.png",
     description:
       "Gantungan kunci akrilik bening dengan cetakan logo sekolah. Ringan, tidak mudah pecah, dan cocok untuk kenang-kenangan atau hadiah teman. Bisa dipesan dalam jumlah banyak untuk acara sekolah.",
   },
@@ -75,6 +81,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 45000,
     tag: "Topi",
     seller: { label: "Bu Rina (Guru)", role: "Guru" },
+    image: "/products/p7.png",
     description:
       "Topi sekolah dengan bordir lambang resmi. Bahan katun twill yang kuat dan nyaman, dilengkapi tali pengatur ukuran di belakang. Cocok untuk kegiatan lapangan dan upacara.",
   },
@@ -86,6 +93,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 15000,
     tag: "Pena",
     seller: { label: "Toko Koperasi (Karyawan)", role: "Karyawan" },
+    image: "/products/p8.png",
     description:
       "Pulpen berbahan metal dengan grafir logo sekolah. Tampilan elegan, tinta hitam halus, dan awet. Pilihan tepat sebagai suvenir resmi acara sekolah.",
   },
@@ -97,6 +105,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 15000,
     tag: "Camilan",
     seller: { label: "Kantin Sekolah (Karyawan)", role: "Karyawan" },
+    image: "/products/p9.png",
     description:
       "Keripik singkong renyah dengan bumbu balado pedas manis. Dibuat dari singkong pilihan dan digoreng segar. Dikemas dalam kemasan 200 gram yang praktis.",
   },
@@ -108,6 +117,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 12000,
     tag: "Minuman",
     seller: { label: "Rafi (Siswa XII)", role: "Siswa" },
+    image: "/products/p10.png",
     description:
       "Es kopi susu segar dalam kemasan botol 250 ml. Perpaduan kopi lokal dan susu yang pas, disajikan dingin. Praktis dibawa ke sekolah atau kegiatan belajar.",
   },
@@ -119,6 +129,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 150000,
     tag: "Jaket",
     seller: { label: "Bu Rina (Guru)", role: "Guru" },
+    image: "/products/p11.png",
     description:
       "Jaket almamater resmi dengan bordir emas di dada. Bahan parasut tebal berlapis furing yang hangat dan nyaman. Wajib dimiliki setiap siswa baru.",
   },
@@ -130,6 +141,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 30000,
     tag: "Warna",
     seller: { label: "Toko Koperasi (Karyawan)", role: "Karyawan" },
+    image: "/products/p12.png",
     description:
       "Set 12 pensil warna berbahan kayu berkualitas dengan warna cerah dan mudah diraut. Dikemas dalam kotak kayu eksklusif, cocok untuk pelajaran seni.",
   },
@@ -141,6 +153,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 65000,
     tag: "Eco",
     seller: { label: "Siti (Siswa XII)", role: "Siswa" },
+    image: "/products/p13.png",
     description:
       "Tote bag kanvas dengan motif ecoprint daun asli, setiap helai unik dan ramah lingkungan. Kuat untuk belanja maupun membawa buku. Karya ekstrakurikuler kriya.",
   },
@@ -152,6 +165,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 25000,
     tag: "Dasi",
     seller: { label: "Bu Siti (Guru)", role: "Guru" },
+    image: "/products/p14.png",
     description:
       "Dasi sekolah resmi dengan bordir logo. Bahan satin halus yang rapi dan tidak mudah kusut. Dilengkapi pengait praktis yang mudah dipakai.",
   },
@@ -163,6 +177,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 10000,
     tag: "Ukur",
     seller: { label: "Ahmad (Siswa XI)", role: "Siswa" },
+    image: "/products/p15.png",
     description:
       "Penggaris kayu 30 cm dengan ukiran nama custom memakai mesin CNC. Skala jelas dan presisi, awet untuk penggunaan harian.",
   },
@@ -174,6 +189,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 25000,
     tag: "Wadah",
     seller: { label: "Dina (Siswa X)", role: "Siswa" },
+    image: "/products/p16.png",
     description:
       "Tempat pensil kanvas model gulung dengan banyak slot dan tali pengikat. Praktis dibawa, muat puluhan alat tulis. Dijahit tangan dengan rapi.",
   },
@@ -185,6 +201,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 85000,
     tag: "Custom",
     seller: { label: "Rafi (Siswa XII)", role: "Siswa" },
+    image: "/products/p17.png",
     description:
       "Kaos angkatan custom dengan desain sablon sesuai permintaan kelas. Bahan cotton combed adem, tersedia sablon depan belakang. Minimal pemesanan 12 pcs.",
   },
@@ -196,6 +213,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 20000,
     tag: "Kue",
     seller: { label: "Kantin Sekolah (Karyawan)", role: "Karyawan" },
+    image: "/products/p18.png",
     description:
       "Brownies panggang lembut dengan topping keju melimpah. Dibuat segar setiap pagi di dapur kantin. Cocok untuk camilan istirahat maupun bingkisan.",
   },
@@ -207,6 +225,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 10000,
     tag: "Segar",
     seller: { label: "Kantin Sekolah (Karyawan)", role: "Karyawan" },
+    image: "/products/p19.png",
     description:
       "Jus jambu biji asli tanpa pengawet, dibuat dari buah pilihan setiap hari. Segar, sehat, dan mengenyangkan. Dikemas dalam gelas 300 ml praktis.",
   },
@@ -218,6 +237,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 22000,
     tag: "Note",
     seller: { label: "Toko Koperasi (Karyawan)", role: "Karyawan" },
+    image: "/products/p20.png",
     description:
       "Notebook spiral dengan sampul motif batik eksklusif. Kertas bergaris 70 lembar yang nyaman ditulis. Cocok untuk catatan pelajaran maupun jurnal.",
   },
@@ -229,6 +249,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 12000,
     tag: "Pin",
     seller: { label: "Dina (Siswa X)", role: "Siswa" },
+    image: "/products/p21.png",
     description:
       "Pin enamel logo sekolah dengan warna cerah dan lapisan glossy. Peniti belakang kuat, cocok untuk tas, jaket, maupun koleksi.",
   },
@@ -240,6 +261,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 55000,
     tag: "Rajut",
     seller: { label: "Bu Rina (Guru)", role: "Guru" },
+    image: "/products/p22.png",
     description:
       "Syal rajut tangan berwarna biru navy dengan bordir logo kecil. Hangat dan lembut, cocok untuk kegiatan luar ruangan maupun di kelas ber-AC.",
   },
@@ -251,6 +273,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 8000,
     tag: "Donat",
     seller: { label: "Kantin Sekolah (Karyawan)", role: "Karyawan" },
+    image: "/products/p23.png",
     description:
       "Paket 4 donat kentang empuk bertabur gula halus. Digoreng fresh setiap istirahat pertama. Manisnya pas, favorit siswa semua angkatan.",
   },
@@ -262,6 +285,7 @@ export const PRODUCT_MOCKS: Product[] = [
     price: 8000,
     tag: "Teh",
     seller: { label: "Rafi (Siswa XII)", role: "Siswa" },
+    image: "/products/p24.png",
     description:
       "Es teh manis klasik dalam botol 300 ml. Disaring dari teh melati pilihan, manisnya pas dan menyegarkan. Laris untuk teman makan siang.",
   },

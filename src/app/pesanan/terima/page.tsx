@@ -1,48 +1,51 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { inter } from "@/lib/fonts";
+import { useHydrated } from "@/lib/use-hydrated";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { formatRupiah } from "@/lib/format";
 import { useSession } from "@/api/auth";
-import { listOrders, markOrderReceived, type Order } from "@/api/orders";
+import { listOrders, markOrderReceived } from "@/api/orders";
 import { site } from "@/lib/site";
 
 export default function TerimaPesananPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-slate-500">Memuat…</div>}>
+      <TerimaPesananContent />
+    </Suspense>
+  );
+}
+
+function TerimaPesananContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const session = useSession();
-  const [order, setOrder] = useState<Order | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const hydrated = useHydrated();
+  const id = searchParams.get("id") ?? "";
+
+  const { order, error } = useMemo(() => {
+    if (!session) return { order: null, error: "" };
+    if (!id) return { order: null, error: "ID pesanan belum diberikan." };
+    const list = listOrders(session.id);
+    if (list === null)
+      return { order: null, error: "Belum ada riwayat pesanan." };
+    const found = list.find((item) => item.id === id) ?? null;
+    return {
+      order: found,
+      error: found ? "" : "Pesanan tidak ditemukan.",
+    };
+  }, [session, id]);
+
   const [confirmed, setConfirmed] = useState(false);
 
   useEffect(() => {
-    if (!session) {
+    if (hydrated && !session) {
       router.replace("/login?next=/pesanan/terima");
-      return;
     }
-    const id = new URLSearchParams(window.location.search).get("id") ?? "";
-    if (!id) {
-      setError("ID pesanan belum diberikan.");
-      setLoading(false);
-      return;
-    }
-    const list = listOrders(session.id);
-    if (list === null) {
-      setError("Belum ada riwayat pesanan.");
-      setLoading(false);
-      return;
-    }
-    const found = list.find((item: Order) => item.id === id);
-    if (!found) {
-      setError("Pesanan tidak ditemukan.");
-    } else {
-      setOrder(found);
-    }
-    setLoading(false);
-  }, [session, router]);
+  }, [session, router, hydrated]);
 
   function handleConfirm() {
     if (!session) return;
@@ -51,13 +54,6 @@ export default function TerimaPesananPage() {
   }
 
   if (!session) return null;
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-slate-500">
-        Memuat detail pesanan...
-      </div>
-    );
-  }
   if (error || !order) {
     return (
       <div className="flex min-h-screen items-center justify-center text-slate-500">

@@ -47,3 +47,10 @@ export function getPendingCheckout(): PendingCheckout | null {
 export function savePendingCheckout(input: PendingCheckout): void {
   writeJson(PENDING_CHECKOUT_KEY, input);
 }
+
+/**
+ * Hapus draft pending checkout setelah pembelian selesai.
+ */
+export function clearPendingCheckout(): void {
+  writeJson(PENDING_CHECKOUT_KEY, null);
+}

@@ -27,6 +27,7 @@ export const productSchema = z.object({
     role: sellerRoleSchema,
   }),
   image: z.string().optional(),
+  images: z.array(z.string()).optional(),
   description: z.string().optional(),
 });
 export type Product = z.infer<typeof productSchema>;
@@ -36,7 +37,29 @@ export type Product = z.infer<typeof productSchema>;
  * TODO(backend): ganti PRODUCT_MOCKS dengan GET /products setelah endpoint
  * tersedia; pertahankan validasi productSchema di batas API.
  */
-const products: Product[] = productSchema.array().parse(PRODUCT_MOCKS);
+/**
+ * Galeri 4 gambar per produk (utama + 3 varian) yang disimpan di /public/products.
+ * p1.png / p1a.png / p1b.png / p1c.png, dst.
+ */
+const PRODUCT_GALLERIES = new Map(
+  PRODUCT_MOCKS.map((product) => [
+    product.id,
+    [
+      `/products/${product.id}.png`,
+      `/products/${product.id}a.png`,
+      `/products/${product.id}b.png`,
+      `/products/${product.id}c.png`,
+    ],
+  ]),
+);
+
+const products: Product[] = productSchema
+  .array()
+  .parse(PRODUCT_MOCKS)
+  .map((product) => ({
+    ...product,
+    images: product.images ?? PRODUCT_GALLERIES.get(product.id),
+  }));
 
 /**
  * Daftar produk untuk katalog.

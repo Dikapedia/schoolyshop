@@ -24,8 +24,9 @@ export default function ProfilPage() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-    const [phone, setPhone] = useState<string[]>([]);
-  const [phoneInitialized, setPhoneInitialized] = useState(false);
+  const [phone, setPhone] = useState<string[]>(() =>
+    getProfilePhone().replace(/\D/g, "").split(""),
+  );
   const [passwordLama, setPasswordLama] = useState("");
   const [passwordBaru, setPasswordBaru] = useState("");
   const [konfirmasiPassword, setKonfirmasiPassword] = useState("");
@@ -47,23 +48,12 @@ export default function ProfilPage() {
     saveSession(updated, true);
   }, [name, email]);
 
-  // Muat nomor HP yang tersimpan (jika ada) saat halaman siap
+  // Simpan nomor HP saat berubah
   useEffect(() => {
-    if (session && !phoneInitialized) {
-      const raw = getProfilePhone();
-      // raw berisi string tanpa prefix "62"; split menjadi array digit
-      const digits = raw.replace(/\D/g, "").split("");
-      setPhone(digits);
-      setPhoneInitialized(true);
-    }
-  }, [session, phoneInitialized]);
-
-  // Simpan nomor HP saat berubah (hanya setelah sudah dimuat)
-  useEffect(() => {
-    if (phoneInitialized && phone.length > 0) {
+    if (phone.length > 0) {
       saveProfilePhone(phone);
     }
-  }, [phone, phoneInitialized]);
+  }, [phone]);
 
   const displayPhone = phone.length ? "+62" + phone.join("") : "";
 

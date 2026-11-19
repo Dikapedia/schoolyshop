@@ -5,19 +5,22 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { inter } from "@/lib/fonts";
 import { site } from "@/lib/site";
+import { useHydrated } from "@/lib/use-hydrated";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { useSession } from "@/api/auth";
-import { listAddresses, type Address } from "@/api/addresses";
 import {
+  clearPendingCheckout,
   getPendingCheckout,
   listShippingOptions,
-  type PendingCheckout,
 } from "@/api/checkout";
 import { formatRupiah } from "@/lib/format";
-import { useCart } from "@/api/cart";
+import { clearCart, useCart } from "@/api/cart";
 import { getProductById } from "@/api/products";
 import { listPaymentBanks } from "@/api/payments";
+import { createOrder } from "@/api/orders";
+
+type PaymentMethod = "va" | "ewallet" | "qris" | "card";
 
 const SHIPPING_OPTIONS = listShippingOptions();
 const PAYMENT_BANKS = listPaymentBanks();
@@ -44,31 +47,36 @@ const BANK_BADGE_LABELS: Record<string, string> = {
   permata: "PRMT",
 };
 
+function createInvoiceId(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `INV-${now.getFullYear()}${month}${day}-001`;
+}
+
 export default function PembayaranPage() {
   const router = useRouter();
   const session = useSession();
   const lines = useCart();
+  const hydrated = useHydrated();
 
-  const [pending, setPending] = useState<PendingCheckout | null>(null);
-  const [addresses, setAddresses] = useState<Address[]>([]);
-  const [selectedAddress, setSelectedAddress] = useState<string>("");
-  const [shipping, setShipping] = useState<string>("");
+  const pending = useMemo(
+    () => (session ? getPendingCheckout() : null),
+    [session],
+  );
+  const shipping = pending?.shippingId ?? "";
   const [countdown, setCountdown] = useState(3582);
   const [selectedBankId, setSelectedBankId] = useState<string>(
     PAYMENT_BANKS[0]?.id ?? "",
   );
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("va");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
-    if (!session) {
+    if (hydrated && !session) {
       router.replace("/login?next=/checkout/pembayaran");
-      return;
     }
-    const p = getPendingCheckout();
-    if (p) setPending(p);
-    setAddresses(listAddresses(session.id));
-    if (p?.addressId) setSelectedAddress(p.addressId);
-    if (p?.shippingId) setShipping(p.shippingId);
-  }, [session, router]);
+  }, [session, router, hydrated]);
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -78,8 +86,6 @@ export default function PembayaranPage() {
 
   const minutes = String(Math.floor(countdown / 60)).padStart(2, "0");
   const seconds = String(countdown % 60).padStart(2, "0");
-
-  const selectedAddressData = addresses.find((a) => a.id === selectedAddress);
 
   const items = useMemo(() => {
     const result = lines.map((line) => {
@@ -96,23 +102,43 @@ export default function PembayaranPage() {
   const total = subtotal + shippingFee;
   const selectedBank =
     PAYMENT_BANKS.find((bank) => bank.id === selectedBankId) ?? PAYMENT_BANKS[0];
-  const [invoiceId, setInvoiceId] = useState<string>("");
+  // ID invoice hanya tersedia di klien (hindari nilai tidak stabil saat prerender).
+  const invoiceId = hydrated ? createInvoiceId() : "";
 
   useEffect(() => {
-    const now = new Date();
-    setInvoiceId(
-      `INV-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-001`,
-    );
-  }, []);
-
-  useEffect(() => {
-    if (items.length === 0 || !pending) {
+    if (hydrated && (items.length === 0 || !pending)) {
       router.replace("/checkout");
     }
-  }, [items, pending, router]);
+  }, [hydrated, items, pending, router]);
 
   if (!session) return null;
   if (!pending) return null;
+
+  async function handleBayar() {
+    if (!session || !pending) return;
+    setIsProcessing(true);
+    try {
+      const orderId = createOrder({
+        sessionId: session.id,
+        items: items.map((it) => ({
+          productId: it.line.productId,
+          name: it.product.name,
+          qty: it.line.qty,
+          price: it.product.price,
+        })),
+        addressId: pending.addressId ?? undefined,
+        shippingId: pending.shippingId ?? undefined,
+        total,
+        paymentMethod,
+      });
+      setCountdown(3600);
+      clearCart();
+      clearPendingCheckout();
+      router.replace("/checkout/selesai?order=" + orderId);
+    } catch {
+      setIsProcessing(false);
+    }
+  }
 
   function handleCopy() {
     if (selectedBank) navigator.clipboard?.writeText(selectedBank.vaNumber);
@@ -195,7 +221,13 @@ export default function PembayaranPage() {
                 {/* Transfer Bank (default open) */}
                 <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
                   <label className="flex cursor-pointer items-center gap-3">
-                    <input type="radio" name="payment" defaultChecked className="accent-blue-600" />
+                    <input
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === "va"}
+                      onChange={() => setPaymentMethod("va")}
+                      className="accent-blue-600"
+                    />
                     <div className="flex-1 font-bold text-sm">Transfer Bank / Virtual Account (Otomatis)</div>
                     <div className="flex gap-1">
                       {PAYMENT_BANKS.slice(0, 3).map((bank) => (
@@ -259,9 +291,17 @@ export default function PembayaranPage() {
                 </div>
 
                 {/* E-Wallet */}
-                <label className="flex cursor-pointer items-center justify-between rounded-lg border border-slate-200 bg-white p-4">
+                <label
+                  className="flex cursor-pointer items-center justify-between rounded-lg border border-slate-200 bg-white p-4"
+                  onClick={() => setPaymentMethod("ewallet")}
+                >
                   <div className="flex items-center gap-3">
-                    <input type="radio" name="payment" className="accent-blue-600" />
+                    <input
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === "ewallet"}
+                      className="accent-blue-600"
+                    />
                     <span className="text-lg">💳</span>
                     <div>
                       <p className="font-bold text-sm">E-Wallet (GoPay, OVO, DANA, ShopeePay)</p>
@@ -274,9 +314,17 @@ export default function PembayaranPage() {
                 </label>
 
                 {/* QRIS */}
-                <label className="flex cursor-pointer items-center justify-between rounded-lg border border-slate-200 bg-white p-4">
+                <label
+                  className="flex cursor-pointer items-center justify-between rounded-lg border border-slate-200 bg-white p-4"
+                  onClick={() => setPaymentMethod("qris")}
+                >
                   <div className="flex items-center gap-3">
-                    <input type="radio" name="payment" className="accent-blue-600" />
+                    <input
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === "qris"}
+                      className="accent-blue-600"
+                    />
                     <span className="text-lg">📱</span>
                     <div>
                       <p className="font-bold text-sm">QRIS (Semua Dompet Digital & Mobile Banking)</p>
@@ -289,9 +337,17 @@ export default function PembayaranPage() {
                 </label>
 
                 {/* Kartu */}
-                <label className="flex cursor-pointer items-center justify-between rounded-lg border border-slate-200 bg-white p-4">
+                <label
+                  className="flex cursor-pointer items-center justify-between rounded-lg border border-slate-200 bg-white p-4"
+                  onClick={() => setPaymentMethod("card")}
+                >
                   <div className="flex items-center gap-3">
-                    <input type="radio" name="payment" className="accent-blue-600" />
+                    <input
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === "card"}
+                      className="accent-blue-600"
+                    />
                     <span className="text-lg">🏧</span>
                     <div>
                       <p className="font-bold text-sm">Kartu Kredit / Debit Online (Visa, Mastercard, GPN)</p>
@@ -301,8 +357,14 @@ export default function PembayaranPage() {
                 </label>
               </div>
 
-              <button className="mt-5 w-full rounded-xl bg-blue-600 py-3.5 text-sm font-bold text-white hover:bg-blue-700">
-                Bayar Sekarang — {formatRupiah(total)}
+              <button
+                onClick={handleBayar}
+                disabled={isProcessing || countdown <= 0}
+                className={`mt-5 w-full rounded-xl py-3.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isProcessing ? "bg-blue-400" : "bg-blue-600"
+                }`}
+              >
+                {isProcessing ? "Memproses..." : `Bayar Sekarang — ${formatRupiah(total)}`}
               </button>
               <p className="mt-2 text-center text-[11px] text-slate-500">Transaksi dienkripsi 256-bit SSL & Terverifikasi Midtrans Payment Gateway</p>
             </div>
