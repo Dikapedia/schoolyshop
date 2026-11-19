@@ -108,7 +108,7 @@ export default function ProductDetail({ product, related }: { product: Product; 
               <span aria-hidden className="text-slate-300">
                 /
               </span>
-              <Link href="/#katalog" className="hover:text-blue-600">
+              <Link href="/produk" className="hover:text-blue-600">
                 Katalog
               </Link>
               <span aria-hidden className="text-slate-300">
@@ -236,7 +236,7 @@ export default function ProductDetail({ product, related }: { product: Product; 
                     Chat
                   </a>
                   <Link
-                    href="/#katalog"
+                    href="/produk"
                     className="hidden shrink-0 rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 sm:inline-flex"
                   >
                     Profil Toko
@@ -364,7 +364,7 @@ export default function ProductDetail({ product, related }: { product: Product; 
                   Koleksi Perlengkapan Sekolah
                 </span>
               </h2>
-              <Link href="/#katalog" className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+              <Link href="/produk" className="text-xs font-semibold text-blue-600 hover:text-blue-700">
                 Lihat Semua (48 Produk Kampus) →
               </Link>
             </div>
