@@ -353,7 +353,7 @@ export function getDashboardSummary(): AdminDashboardSummary {
   }
 
   for (const item of data.returns.filter(
-    (entry) => entry.status === "Menunggu Persetujuan",
+    (entry) => entry.status === "Menunggu Keputusan",
   )) {
     notifications.push({
       id: `return-${item.id}`,
@@ -508,6 +508,8 @@ export function createProduct(input: AdminProductInput): AdminProduct {
   }
   const product: AdminProduct = {
     ...input,
+    sellerId: input.sellerId ?? 0,
+    categoryId: input.categoryId ?? 0,
     id: nextId(state().products),
     name: input.name.trim(),
     price: Number(input.price) || 0,
@@ -684,6 +686,8 @@ function shipmentDetail(shipment: AdminShipment): AdminShipmentDetail {
 
   return {
     id: shipment.id,
+    orderId: shipment.orderId ?? shipment.id,
+    customer: shipment.customer,
     recipient: shipment.customer,
     product: shipment.product,
     quantity: 1,
@@ -784,6 +788,7 @@ export function createShipment(orderId: string, courier: string): AdminShipment 
 
   const shipment: AdminShipment = {
     id: order.id,
+    orderId: order.id,
     customer: order.customer,
     product: order.product,
     total: order.total,
@@ -833,7 +838,7 @@ export function getReturnDetail(id: string): AdminReturnDetail {
 
 export function approveReturn(id: string): AdminReturn {
   const item = requireReturn(id);
-  item.status = "Menunggu Barang Kembali";
+  item.status = "Disetujui";
   return item;
 }
 

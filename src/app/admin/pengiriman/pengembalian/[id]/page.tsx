@@ -38,13 +38,24 @@ export default function DetailPengembalianPage() {
 
   async function handleConfirm() {
     if (!confirmAction || !detail) return;
+
+    const adminNote = note.trim();
+    if (confirmAction === "rejected" && !adminNote) {
+      setSubmitError("Alasan penolakan wajib diisi.");
+      return;
+    }
+
     setSubmitting(true);
     setSubmitError("");
     try {
       if (confirmAction === "accepted") {
-        await approveAdminReturn(detail.id);
+        await approveAdminReturn(
+          detail.id,
+          "Transfer Bank",
+          adminNote || undefined,
+        );
       } else {
-        await rejectAdminReturn(detail.id, note.trim() || undefined);
+        await rejectAdminReturn(detail.id, adminNote);
       }
       const target = confirmAction === "accepted" ? "disetujui" : "ditolak";
       router.push(`/admin/pengiriman/pengembalian/${detail.id}/${target}`);

@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
+  AlertCircleIcon,
   CheckCircleIcon,
   ChevronLeftIcon,
   EyeIcon,
-  PackageIcon,
   ReceiptIcon,
   TruckIcon,
 } from "@/components/icons";
@@ -27,19 +27,10 @@ function HourglassIcon({ className }: { className?: string }) {
   );
 }
 
-function RefreshIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M21 12a9 9 0 1 1-2.64-6.36" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M21 3v6h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 const STATUS_STYLES = (counts: Record<ReturnStatus, number>) => [
   {
-    label: "Menunggu Persetujuan",
-    value: String(counts["Menunggu Persetujuan"]),
+    label: "Menunggu Keputusan",
+    value: String(counts["Menunggu Keputusan"]),
     description: "Perlu tindakan verifikasi segera",
     tone: "border-t-orange-400",
     descriptionClass: "text-orange-500",
@@ -47,31 +38,22 @@ const STATUS_STYLES = (counts: Record<ReturnStatus, number>) => [
     icon: <HourglassIcon />,
   },
   {
-    label: "Menunggu Barang Kembali",
-    value: String(counts["Menunggu Barang Kembali"]),
-    description: "Dalam pengiriman oleh kurir",
-    tone: "border-t-blue-400",
-    descriptionClass: "text-blue-600",
-    iconClass: "bg-blue-50 text-blue-600",
-    icon: <PackageIcon width={20} height={20} />,
-  },
-  {
-    label: "Pengembalian Diproses",
-    value: String(counts["Pengembalian Diproses"]),
-    description: "Proses refund dana / tukar stok",
-    tone: "border-t-purple-400",
-    descriptionClass: "text-purple-600",
-    iconClass: "bg-purple-50 text-purple-600",
-    icon: <RefreshIcon />,
-  },
-  {
-    label: "Pengembalian Selesai",
-    value: String(counts["Pengembalian Selesai"]),
-    description: "Kasus berhasil ditutup",
+    label: "Disetujui",
+    value: String(counts["Disetujui"]),
+    description: "Pengembalian dana / barang disetujui",
     tone: "border-t-emerald-400",
     descriptionClass: "text-emerald-600",
     iconClass: "bg-emerald-50 text-emerald-600",
     icon: <CheckCircleIcon width={20} height={20} />,
+  },
+  {
+    label: "Ditolak",
+    value: String(counts["Ditolak"]),
+    description: "Pengajuan tidak disetujui admin",
+    tone: "border-t-red-400",
+    descriptionClass: "text-red-600",
+    iconClass: "bg-red-50 text-red-500",
+    icon: <AlertCircleIcon width={20} height={20} />,
   },
 ];
 
@@ -129,7 +111,7 @@ export default function PengembalianBarangPage() {
           <ReceiptIcon width={17} height={17} />
           Pengembalian
           <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-100 px-1.5 text-[11px] font-bold text-red-600">
-            {counts["Menunggu Persetujuan"]}
+            {counts["Menunggu Keputusan"]}
           </span>
         </Link>
       </div>
@@ -139,7 +121,7 @@ export default function PengembalianBarangPage() {
         <p className="text-sm text-slate-600 mt-1">Kelola permintaan retur barang dari pembeli.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         {statusStyles.map((stat) => (
           <div
             key={stat.label}
@@ -215,8 +197,8 @@ export default function PengembalianBarangPage() {
                 return (
                   <tr key={item.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/40 transition-colors">
                     <td className="py-4 px-6">
-                      <Link href={`/admin/pesanan/${item.id}`} className="font-bold text-blue-600 hover:text-blue-700 whitespace-nowrap">
-                        {item.id}
+                      <Link href={`/admin/pesanan/${item.orderId}`} className="font-bold text-blue-600 hover:text-blue-700 whitespace-nowrap">
+                        {item.orderId}
                       </Link>
                     </td>
                     <td className="py-4 px-6">
@@ -234,7 +216,7 @@ export default function PengembalianBarangPage() {
                       <StatusBadge status={item.status} />
                     </td>
                     <td className="py-4 px-6">
-                      {item.status === "Menunggu Persetujuan" ? (
+                      {item.status === "Menunggu Keputusan" ? (
                         <Link
                           href={`/admin/pengiriman/pengembalian/${item.id}`}
                           className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition whitespace-nowrap"

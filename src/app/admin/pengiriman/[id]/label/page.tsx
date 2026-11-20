@@ -81,7 +81,7 @@ export default function PratinjauLabelPage() {
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Pratinjau Label Pengiriman</h1>
             <p className="text-sm text-slate-600 mt-1">
-              Label pengiriman standar Biteship untuk paket pesanan #{data.id}
+              Label pengiriman standar Biteship untuk paket pesanan #{data.orderId}
             </p>
           </div>
 
@@ -185,7 +185,7 @@ export default function PratinjauLabelPage() {
           <div className="mt-3 grid grid-cols-3 gap-3 border-t border-dashed border-slate-300 pt-3 text-[10px]">
             <div>
               <p className="text-[8px] font-semibold uppercase tracking-wide text-slate-500">No. Pesanan</p>
-              <p className="font-mono font-bold text-slate-900">#{data.id}</p>
+              <p className="font-mono font-bold text-slate-900">#{data.orderId}</p>
             </div>
             <div>
               <p className="text-[8px] font-semibold uppercase tracking-wide text-slate-500">Berat Paket</p>

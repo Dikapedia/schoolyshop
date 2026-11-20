@@ -81,7 +81,10 @@ export default function LaporanPenjualanPage() {
   const [semester, setSemester] = useState("ganjil-2026");
   const [seller, setSeller] = useState("all");
   const [appliedSeller, setAppliedSeller] = useState("all");
-  const { data, loading, error, reload } = useAsyncData("sales-report", getSalesReport);
+  const { data, loading, error, reload } = useAsyncData(
+    `sales-report-${startDate}-${endDate}`,
+    () => getSalesReport(startDate, endDate),
+  );
 
   if (loading) return <LoadingState label="Memuat laporan penjualan..." />;
   if (error) return <ErrorState message={error} onRetry={reload} />;
@@ -104,8 +107,6 @@ export default function LaporanPenjualanPage() {
 
   const rows = report.filter((row) => {
     if (appliedSeller !== "all" && row.business !== appliedSeller) return false;
-    if (startDate && row.date < startDate) return false;
-    if (endDate && row.date > endDate) return false;
     return true;
   });
 

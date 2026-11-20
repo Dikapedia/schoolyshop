@@ -30,10 +30,10 @@ const formatThousands = (value: string) => value.replace(/\B(?=(\d{3})+(?!\d))/g
 
 const PAGE_SIZE = 5;
 
-const emptyAddForm = (): EditForm => ({
+const emptyAddForm = (seller = "", category = ""): EditForm => ({
   name: "",
-  seller: "Kaji Ecoprint",
-  category: "Kerajinan",
+  seller,
+  category,
   price: "",
   stock: "",
   description: "",
@@ -243,16 +243,27 @@ export default function KelolaProdukPage() {
       setError("Stok tidak boleh kosong atau negatif.");
       return;
     }
+    if (!form.description.trim()) {
+      setError("Deskripsi produk wajib diisi.");
+      return;
+    }
+    if (!form.seller || !form.category) {
+      setError("Penjual dan kategori wajib dipilih.");
+      return;
+    }
 
     try {
+      const hasMultipleVariants =
+        Array.isArray(editing.variants) && editing.variants.length > 1;
+
       const updated = await updateAdminProduct(editing.id, {
         name: form.name.trim(),
         seller: form.seller,
         category: form.category,
         price: Number(form.price),
-        stock: Number(form.stock),
-        description: form.description,
+        description: form.description.trim(),
         status: form.status,
+        ...(hasMultipleVariants ? {} : { stock: Number(form.stock) }),
       });
       setProducts((prev) =>
         prev.map((product) => (product.id === updated.id ? updated : product)),
@@ -267,7 +278,9 @@ export default function KelolaProdukPage() {
     setEditing(null);
     setForm(null);
     setError("");
-    setAddForm(emptyAddForm());
+    setAddForm(
+      emptyAddForm(sellerOptions[0] ?? "", categoryOptions[0] ?? ""),
+    );
     setAddError("");
     setAddOpen(true);
   };
@@ -290,6 +303,14 @@ export default function KelolaProdukPage() {
       setAddError("Stok awal tidak boleh kosong atau negatif.");
       return;
     }
+    if (!addForm.description.trim()) {
+      setAddError("Deskripsi produk wajib diisi.");
+      return;
+    }
+    if (!addForm.seller || !addForm.category) {
+      setAddError("Penjual dan kategori wajib dipilih.");
+      return;
+    }
 
     try {
       const created = await createAdminProduct({
@@ -298,7 +319,7 @@ export default function KelolaProdukPage() {
         category: addForm.category,
         price: Number(addForm.price),
         stock: Number(addForm.stock),
-        description: addForm.description,
+        description: addForm.description.trim(),
         status: addForm.status,
       });
 
