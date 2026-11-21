@@ -8,7 +8,9 @@ import { CheckIcon, ImageIcon } from "@/components/icons";
 import { cx } from "@/lib/cx";
 import { inter } from "@/lib/fonts";
 import { formatRupiah } from "@/lib/format";
-import { addToCartWithAuth } from "@/api/cart";
+import { addToCustomerCartBySlug } from "@/api/customer/cart";
+import { useSession } from "@/api/auth";
+import { getApiErrorMessage } from "@/api/errors";
 import type { Product } from "@/api/products";
 import { site, whatsappLink } from "@/lib/site";
 import SiteFooter from "./SiteFooter";
@@ -62,22 +64,37 @@ const SIZES = ["S", "M", "L", "XL", "XXL"] as const;
 
 export default function ProductDetail({ product, related }: { product: Product; related: Product[] }) {
   const router = useRouter();
+  const session = useSession();
   const extra = useMemo(() => getExtra(product), [product]);
   const [activeThumb, setActiveThumb] = useState(0);
   const [size, setSize] = useState<(typeof SIZES)[number]>("M");
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [cartError, setCartError] = useState("");
 
   const thumbnails = useMemo(() => [0, 1, 2, 3], []);
 
-  function handleAdd(): boolean {
-    if (!addToCartWithAuth(product.id, qty)) {
+  async function handleAdd(): Promise<boolean> {
+    if (!session) {
       router.push(`/login?next=${encodeURIComponent(`/produk/${product.slug}`)}`);
       return false;
     }
-    setAdded(true);
-    window.setTimeout(() => setAdded(false), 1400);
-    return true;
+
+    setAdding(true);
+    setCartError("");
+
+    try {
+      await addToCustomerCartBySlug({ slug: product.slug, qty, size });
+      setAdded(true);
+      window.setTimeout(() => setAdded(false), 1400);
+      return true;
+    } catch (cause: unknown) {
+      setCartError(getApiErrorMessage(cause, "Gagal menambahkan ke keranjang."));
+      return false;
+    } finally {
+      setAdding(false);
+    }
   }
 
   const sellerRoleStyle =
@@ -325,8 +342,9 @@ export default function ProductDetail({ product, related }: { product: Product; 
                 <button
                   type="button"
                   onClick={handleAdd}
+                  disabled={adding}
                   className={cx(
-                    "inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border px-4 text-xs font-semibold transition",
+                    "inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border px-4 text-xs font-semibold transition disabled:opacity-60",
                     added ? "border-emerald-200 bg-emerald-600 text-white" : "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100",
                   )}
                 >
@@ -336,20 +354,24 @@ export default function ProductDetail({ product, related }: { product: Product; 
                     </>
                   ) : (
                     <>
-                      <span aria-hidden>🛒</span> Tambah ke Keranjang
+                      <span aria-hidden>🛒</span> {adding ? "Menambahkan..." : "Tambah ke Keranjang"}
                     </>
                   )}
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (handleAdd()) router.push("/keranjang");
+                  disabled={adding}
+                  onClick={async () => {
+                    if (await handleAdd()) router.push("/keranjang");
                   }}
-                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-5 text-xs font-semibold text-white hover:bg-blue-700"
+                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
                 >
                   <span aria-hidden>◧</span> Beli Sekarang
                 </button>
               </div>
+              {cartError && (
+                <p className="mt-2 text-xs font-medium text-red-600">{cartError}</p>
+              )}
             </div>
           </div>
 

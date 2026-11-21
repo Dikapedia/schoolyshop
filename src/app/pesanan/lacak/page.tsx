@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { inter } from "@/lib/fonts";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { useSession } from "@/api/auth";
 import { trackShipment, type Tracking } from "@/api/shipments";
-
-const DEFAULT_MAP_CENTER = [-6.9667, 110.4167];
-const DEFAULT_MAP_ZOOM = 13;
+import { useHydrated } from "@/lib/use-hydrated";
 
 export default function LacakPengirimanPage() {
   const router = useRouter();
@@ -17,18 +15,13 @@ export default function LacakPengirimanPage() {
   const [tracking, setTracking] = useState<Tracking | null>(null);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
-  const mapRef = useRef<HTMLDivElement>(null);
-
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const hydrated = useHydrated();
 
   useEffect(() => {
-    if (!session && mounted) {
+    if (!session && hydrated) {
       router.replace("/login?next=/pesanan/lacak");
     }
-  }, [session, router, mounted]);
+  }, [session, router, hydrated]);
 
   function handleTrack() {
     if (!search.trim()) {
@@ -63,6 +56,12 @@ export default function LacakPengirimanPage() {
               Lacak
             </button>
           </div>
+
+          {error && (
+            <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+              {error}
+            </p>
+          )}
 
                 {/* Map */}
                 <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5">
