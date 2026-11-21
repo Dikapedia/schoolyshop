@@ -82,7 +82,7 @@ export default function PelacakanPengirimanPage() {
     if (index === 0) {
       return {
         ...step,
-        description: `Pengiriman ${detail.id} telah berhasil dikonfirmasi dan tiket resi kurir ${detail.trackingNumber} diterbitkan.`,
+        description: `Pengiriman ${detail.orderId} telah berhasil dikonfirmasi dan tiket resi kurir ${detail.trackingNumber} diterbitkan.`,
       };
     }
     if (index === trackingSteps.length - 1) {
@@ -145,7 +145,7 @@ export default function PelacakanPengirimanPage() {
         <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-5">
           <div>
             <p className="text-xs text-slate-500 mb-1">Nomor Pesanan</p>
-            <p className="text-sm font-mono font-bold text-slate-900">{detail.id}</p>
+            <p className="text-sm font-mono font-bold text-slate-900">{detail.orderId}</p>
           </div>
           <div>
             <p className="text-xs text-slate-500 mb-1">Nama Pembeli</p>

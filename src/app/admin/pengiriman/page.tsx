@@ -15,10 +15,13 @@ import {
   BITESHIP_COURIER,
   createAdminShipment,
   getAdminShipments,
+  getAdminShippingRates,
   SHIPMENT_STATUS_OPTIONS,
   type AdminShipment,
   type ShipmentStatus,
+  type ShippingRateView,
 } from "@/api/admin/shipments";
+import { getAdminOrderDetail, type AdminOrderDetail } from "@/api/admin/order-details";
 import KonfirmasiPengirimanModal from "@/components/admin/KonfirmasiPengirimanModal";
 import {
   ErrorState,
@@ -49,6 +52,10 @@ export default function PengirimanPage() {
   const [createFor, setCreateFor] = useState<AdminShipment | null>(null);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
+  const [orderDetail, setOrderDetail] = useState<AdminOrderDetail | null>(null);
+  const [shippingRates, setShippingRates] = useState<ShippingRateView[]>([]);
+  const [selectedRateId, setSelectedRateId] = useState<string | number | undefined>();
+  const [loadingRates, setLoadingRates] = useState(false);
 
   if (loading) return <LoadingState label="Memuat data pengiriman..." />;
   if (error || !data) {
@@ -106,15 +113,46 @@ export default function PengirimanPage() {
     setStatusFilter("Semua Status");
   };
 
+  const handleOpenCreateModal = async (shipment: AdminShipment) => {
+    setCreateFor(shipment);
+    setCreateError("");
+    setOrderDetail(null);
+    setShippingRates([]);
+    setSelectedRateId(undefined);
+    setLoadingRates(true);
+
+    try {
+      const detail = await getAdminOrderDetail(shipment.orderId);
+      setOrderDetail(detail);
+      const rates = await getAdminShippingRates({
+        destinationAreaId: detail.shippingAreaId,
+        weight: detail.totalWeight,
+      });
+      setShippingRates(rates);
+      if (rates.length > 0) setSelectedRateId(rates[0].id);
+    } catch (cause) {
+      setCreateError(getApiErrorMessage(cause));
+    } finally {
+      setLoadingRates(false);
+    }
+  };
+
   const handleCreateShipment = async () => {
     if (!createFor) return;
-    const shipmentId = createFor.id;
     setCreating(true);
     setCreateError("");
     try {
-      await createAdminShipment(shipmentId, BITESHIP_COURIER);
+      const created = await createAdminShipment(
+        createFor.orderId,
+        BITESHIP_COURIER,
+        "Regular",
+        selectedRateId,
+      );
       setCreateFor(null);
-      router.push(`/admin/pengiriman/${shipmentId}`);
+      setOrderDetail(null);
+      setShippingRates([]);
+      setSelectedRateId(undefined);
+      router.push(`/admin/pengiriman/${created.id}`);
     } catch (cause) {
       setCreateError(getApiErrorMessage(cause));
       setCreating(false);
@@ -242,11 +280,11 @@ export default function PengirimanPage() {
                     const trackingPending = shipment.trackingNumber === "Belum tersedia";
 
                     return (
-                      <tr key={shipment.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/40 transition-colors">
+                      <tr key={shipment.orderId} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/40 transition-colors">
                         <td className="py-4 px-6 text-slate-500">{index + 1}</td>
                         <td className="py-4 px-6">
-                          <Link href={`/admin/pesanan/${shipment.id}`} className="font-bold text-blue-600 hover:text-blue-700">
-                            {shipment.id}
+                          <Link href={`/admin/pesanan/${shipment.orderId}`} className="font-bold text-blue-600 hover:text-blue-700">
+                            {shipment.orderId}
                           </Link>
                         </td>
                         <td className="py-4 px-6">
@@ -269,7 +307,7 @@ export default function PengirimanPage() {
                           {shipment.status === "Siap Dikirim" && (
                             <button
                               type="button"
-                              onClick={() => setCreateFor(shipment)}
+                              onClick={() => handleOpenCreateModal(shipment)}
                               className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition whitespace-nowrap"
                             >
                               <PlusIcon width={14} height={14} />
@@ -287,7 +325,7 @@ export default function PengirimanPage() {
                           )}
                           {shipment.status === "Selesai" && (
                             <Link
-                              href={`/admin/pesanan/${shipment.id}`}
+                              href={`/admin/pesanan/${shipment.orderId}`}
                               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-100 transition whitespace-nowrap"
                             >
                               <EyeIcon width={14} height={14} />
@@ -340,12 +378,20 @@ export default function PengirimanPage() {
       {createFor && (
         <KonfirmasiPengirimanModal
           shipment={createFor}
+          orderDetail={orderDetail ?? undefined}
+          shippingRates={shippingRates}
+          selectedRateId={selectedRateId}
+          onRateSelect={setSelectedRateId}
+          loadingRates={loadingRates}
           busy={creating}
           error={createError}
           onClose={() => {
             if (creating) return;
             setCreateFor(null);
             setCreateError("");
+            setOrderDetail(null);
+            setShippingRates([]);
+            setSelectedRateId(undefined);
           }}
           onConfirm={handleCreateShipment}
         />

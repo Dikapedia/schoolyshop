@@ -1,14 +1,16 @@
-import { request } from "../client";
+import { adminRequest } from "./client";
+import {
+  adminAvatarClass,
+  adminInitials,
+  fetchAllAdminPages,
+  formatAdminDate,
+} from "./shared";
 
-export type ReturnStatus =
-  | "Menunggu Persetujuan"
-  | "Menunggu Barang Kembali"
-  | "Pengembalian Diproses"
-  | "Pengembalian Selesai"
-  | "Ditolak";
+export type ReturnStatus = "Menunggu Keputusan" | "Disetujui" | "Ditolak";
 
 export type AdminReturn = {
   id: string;
+  orderId: string;
   customer: string;
   initials: string;
   avatarClass: string;
@@ -19,16 +21,53 @@ export type AdminReturn = {
 };
 
 export const RETURN_STATUS_OPTIONS: ReturnStatus[] = [
-  "Menunggu Persetujuan",
-  "Menunggu Barang Kembali",
-  "Pengembalian Diproses",
-  "Pengembalian Selesai",
+  "Menunggu Keputusan",
+  "Disetujui",
   "Ditolak",
 ];
 
+type AdminReturnRow = {
+  id: number;
+  orderId: number;
+  status: ReturnStatus;
+  submittedAt: string;
+  buyer: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  items: Array<{
+    productName: string;
+    reason: string;
+  }>;
+};
+
+function mapAdminReturn(row: AdminReturnRow): AdminReturn {
+  const items = Array.isArray(row.items) ? row.items : [];
+  const first = items[0];
+  const product = first
+    ? items.length > 1
+      ? `${first.productName} +${items.length - 1} lainnya`
+      : first.productName
+    : "-";
+
+  return {
+    id: String(row.id),
+    orderId: String(row.orderId),
+    customer: row.buyer?.name ?? "-",
+    initials: adminInitials(row.buyer?.name ?? "-"),
+    avatarClass: adminAvatarClass(row.id),
+    product,
+    reason: first?.reason || "-",
+    submittedAt: formatAdminDate(row.submittedAt),
+    status: row.status,
+  };
+}
+
 /** GET /admin/returns?page=&search=&status= */
-export function getAdminReturns(): Promise<AdminReturn[]> {
-  return request<AdminReturn[]>("/admin/returns");
+export async function getAdminReturns(): Promise<AdminReturn[]> {
+  const rows = await fetchAllAdminPages<AdminReturnRow>("/admin/returns");
+  return rows.map(mapAdminReturn);
 }
 
 /** Hitung ringkasan dari baris yang benar-benar dimuat. */
@@ -44,32 +83,36 @@ export function countReturnStatuses(
 }
 
 /** POST /admin/returns/:id/approve */
-export function approveAdminReturn(id: string): Promise<AdminReturn> {
-  return request<AdminReturn>(`/admin/returns/${id}/approve`, {
+export function approveAdminReturn(
+  id: string,
+  refundMethod = "Transfer Bank",
+  adminNote?: string,
+): Promise<void> {
+  return adminRequest<void>(`/admin/returns/${id}/approve`, {
     method: "POST",
+    body: {
+      refundMethod,
+      ...(adminNote ? { adminNote } : {}),
+    },
   });
 }
 
 /** POST /admin/returns/:id/reject */
 export function rejectAdminReturn(
   id: string,
-  reason?: string,
-): Promise<AdminReturn> {
-  return request<AdminReturn>(`/admin/returns/${id}/reject`, {
+  adminNote: string,
+): Promise<void> {
+  return adminRequest<void>(`/admin/returns/${id}/reject`, {
     method: "POST",
-    body: { reason },
+    body: { adminNote },
   });
 }
 
 export function getReturnStatusTone(status: ReturnStatus) {
   switch (status) {
-    case "Menunggu Persetujuan":
+    case "Menunggu Keputusan":
       return { badge: "bg-orange-50 text-orange-700", dot: "bg-orange-500" };
-    case "Menunggu Barang Kembali":
-      return { badge: "bg-blue-50 text-blue-700", dot: "bg-blue-500" };
-    case "Pengembalian Diproses":
-      return { badge: "bg-purple-50 text-purple-700", dot: "bg-purple-500" };
-    case "Pengembalian Selesai":
+    case "Disetujui":
       return { badge: "bg-emerald-50 text-emerald-700", dot: "bg-emerald-500" };
     case "Ditolak":
       return { badge: "bg-red-50 text-red-700", dot: "bg-red-500" };

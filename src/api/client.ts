@@ -15,7 +15,7 @@ import {
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 export const USE_MOCK_AUTH = process.env.NEXT_PUBLIC_USE_MOCK_AUTH !== "false";
 
-type RequestOptions<T> = {
+export type RequestOptions<T> = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   headers?: HeadersInit;
@@ -24,6 +24,11 @@ type RequestOptions<T> = {
   statusMessages?: Partial<Record<number, string>>;
   /** Kode khusus per status, mis. 409 saat registrasi. */
   statusCodes?: Partial<Record<number, ApiErrorCode>>;
+  /**
+   * Base URL khusus request ini. Default `API_URL`.
+   * Dipakai modul admin agar selalu menuju route handler lokal `/api`.
+   */
+  baseUrl?: string;
 };
 
 /**
@@ -43,11 +48,12 @@ export async function request<T>(
     responseSchema,
     statusMessages,
     statusCodes,
+    baseUrl = API_URL,
   } = options;
 
   let response: Response;
   try {
-    response = await fetch(`${API_URL}${path}`, {
+    response = await fetch(`${baseUrl}${path}`, {
       method,
       headers: {
         ...(body === undefined ? {} : { "Content-Type": "application/json" }),

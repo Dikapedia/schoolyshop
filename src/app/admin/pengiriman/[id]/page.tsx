@@ -65,7 +65,7 @@ export default function DetailPengirimanPage() {
         <div>
           <h2 className="text-base font-bold text-emerald-700">Pengiriman Berhasil Dibuat!</h2>
           <p className="text-sm text-emerald-800/80 mt-1 leading-relaxed">
-            Pesanan {data.id} telah berhasil didaftarkan ke sistem Biteship dan siap dipickup oleh
+            Pesanan {data.orderId} telah berhasil didaftarkan ke sistem Biteship dan siap dipickup oleh
             kurir.
           </p>
         </div>
@@ -83,7 +83,7 @@ export default function DetailPengirimanPage() {
                   Detail Pengiriman <span className="text-sm font-medium text-slate-400">(Biteship)</span>
                 </h1>
                 <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-600">
-                  Pesanan #{data.id}
+                  Pesanan #{data.orderId}
                 </span>
               </div>
               <p className="text-xs font-medium text-slate-500 mt-1">
@@ -101,7 +101,7 @@ export default function DetailPengirimanPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-5">
             <div>
               <p className="text-xs text-slate-500 mb-1">Nomor Pesanan</p>
-              <p className="text-sm font-mono font-bold text-slate-900">{data.id}</p>
+              <p className="text-sm font-mono font-bold text-slate-900">{data.orderId}</p>
             </div>
             <div>
               <p className="text-xs text-slate-500 mb-1">Nama Penerima</p>

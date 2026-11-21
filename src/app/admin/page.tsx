@@ -50,6 +50,9 @@ export default function AdminPage() {
     return <ErrorState message={error || "Data dashboard tidak tersedia."} onRetry={reload} />;
   }
 
+  const stats = Array.isArray(data.summary?.stats) ? data.summary.stats : [];
+  const orders = Array.isArray(data.orders) ? data.orders : [];
+
   return (
     <div>
       <PageHeader
@@ -59,7 +62,7 @@ export default function AdminPage() {
       />
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {data.summary.stats.map((stat, index) => (
+        {stats.map((stat, index) => (
           <StatCard
             key={stat.label}
             label={stat.label}
@@ -99,7 +102,7 @@ export default function AdminPage() {
             </tr>
           </thead>
           <tbody>
-            {data.orders.map((order) => (
+            {orders.map((order) => (
               <tr
                 key={order.id}
                 className="border-b border-slate-100 last:border-0 hover:bg-slate-50/40"
@@ -132,7 +135,7 @@ export default function AdminPage() {
         </Table>
 
         <div className="flex items-center justify-between px-6 py-4 text-sm text-slate-500">
-          <span>Menampilkan {data.orders.length} pesanan terbaru</span>
+          <span>Menampilkan {orders.length} pesanan terbaru</span>
           <Link href="/admin/pesanan" className="font-semibold text-blue-600">
             Selanjutnya →
           </Link>
