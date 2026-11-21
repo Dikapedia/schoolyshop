@@ -45,11 +45,18 @@ const STATUS_TONE: Record<string, BadgeTone> = {
   "Menunggu Verifikasi": "info",
   "Menunggu Persetujuan": "warning",
   "Menunggu Barang Kembali": "info",
+  "Menunggu Keputusan": "warning",
   "Pengembalian Diproses": "purple",
   "Pengembalian Selesai": "success",
+  Disetujui: "success",
   Ditolak: "danger",
   Diproses: "info",
   Dikirim: "info",
+  "Dalam Pengembalian": "purple",
+  Dibatalkan: "danger",
+  Kedaluwarsa: "neutral",
+  Dikembalikan: "purple",
+  "Sebagian Dikembalikan": "purple",
   "Siap Dikirim": "warning",
 };
 

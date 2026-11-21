@@ -1,12 +1,19 @@
 "use client";
 
 import { InfoIcon, TruckIcon } from "@/components/icons";
-import type { AdminShipment } from "@/api/admin/shipments";
+import type { AdminShipment, ShippingRateView } from "@/api/admin/shipments";
+import type { AdminOrderDetail } from "@/api/admin/order-details";
+import { formatAdminRupiah } from "@/api/admin/shared";
 
 type KonfirmasiPengirimanModalProps = {
   shipment: AdminShipment;
   address?: string;
   quantity?: number;
+  orderDetail?: AdminOrderDetail;
+  shippingRates?: ShippingRateView[];
+  selectedRateId?: string | number;
+  onRateSelect?: (rateId: string | number) => void;
+  loadingRates?: boolean;
   busy?: boolean;
   error?: string;
   onClose: () => void;
@@ -26,6 +33,11 @@ export default function KonfirmasiPengirimanModal({
   shipment,
   address = "Jl. Pendidikan No. 45, RT 03/RW 05, Kebayoran Baru, Jakarta Selatan, 12150",
   quantity = 1,
+  orderDetail,
+  shippingRates,
+  selectedRateId,
+  onRateSelect,
+  loadingRates = false,
   busy = false,
   error,
   onClose,
@@ -82,7 +94,7 @@ export default function KonfirmasiPengirimanModal({
               Ringkasan Pesanan
             </span>
             <span className="rounded-md bg-blue-600 px-2 py-0.5 text-[11px] font-bold text-white">
-              {shipment.id}
+              {shipment.orderId}
             </span>
           </div>
 
@@ -111,7 +123,11 @@ export default function KonfirmasiPengirimanModal({
               </div>
               <div className="mt-2 flex items-start justify-between gap-4">
                 <span className="text-xs text-slate-500">Berat Paket</span>
-                <span className="text-sm text-slate-700 text-right">350 gram (0.35 kg)</span>
+                <span className="text-sm text-slate-700 text-right">
+                  {orderDetail?.totalWeight
+                    ? `${orderDetail.totalWeight.toLocaleString("id-ID")} gram`
+                    : "350 gram (0.35 kg)"}
+                </span>
               </div>
             </div>
           </div>
@@ -121,30 +137,85 @@ export default function KonfirmasiPengirimanModal({
           <div className="flex items-center justify-between gap-3 mb-2">
             <div className="flex items-center gap-2">
               <TruckIcon width={16} height={16} className="text-blue-600" />
-              <h3 className="text-sm font-bold text-slate-900">Pilihan Kurir &amp; Layanan Pengiriman Biteship</h3>
+              <h3 className="text-sm font-bold text-slate-900">Pilihan Kurir &amp; Layanan Pengiriman</h3>
             </div>
-            <span className="text-[11px] font-medium text-slate-400 whitespace-nowrap">Real-time Tarif API</span>
+            <span className="text-[11px] font-medium text-slate-400 whitespace-nowrap">
+              {shippingRates && shippingRates.length > 0
+                ? `${shippingRates.length} tarif tersedia`
+                : "Real-time Tarif API"}
+            </span>
           </div>
 
-          <div className="rounded-xl border-2 border-blue-500 bg-blue-50/60 p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-semibold text-slate-900">J&amp;T Express</span>
-                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
-                    Regular
-                  </span>
-                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                    Rekomendasi
-                  </span>
-                </div>
-                <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
-                  <ClockIcon />
-                  Estimasi 2-3 Hari • Drop-off / Pickup
-                </div>
+          <div className="space-y-2">
+            {loadingRates ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
+                Memuat tarif pengiriman...
               </div>
-              <span className="text-xs text-slate-400 whitespace-nowrap">Ongkir Standar</span>
-            </div>
+            ) : shippingRates && shippingRates.length > 0
+              ? shippingRates.map((rate) => {
+                  const isSelected = selectedRateId === rate.id;
+                  return (
+                    <div
+                      key={String(rate.id)}
+                      onClick={() => onRateSelect?.(rate.id)}
+                      className={`rounded-xl border p-4 cursor-pointer transition ${
+                        isSelected
+                          ? "border-blue-500 bg-blue-50/60"
+                          : "border-slate-200 bg-white hover:border-blue-300"
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-semibold text-slate-900">{rate.courier}</span>
+                            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                              {rate.service}
+                            </span>
+                            {rate.badge && (
+                              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                                {rate.badge}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
+                            <ClockIcon />
+                            {rate.eta} • {rate.description}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-bold text-slate-900">
+                            {formatAdminRupiah(rate.price)}
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            {isSelected ? "Terpilih" : "Ongkir"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              : (
+                  <div className="rounded-xl border-2 border-blue-500 bg-blue-50/60 p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-semibold text-slate-900">J&amp;T Express</span>
+                          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                            Regular
+                          </span>
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                            Rekomendasi
+                          </span>
+                        </div>
+                        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
+                          <ClockIcon />
+                          Estimasi 2-3 Hari • Drop-off / Pickup
+                        </div>
+                      </div>
+                      <span className="text-xs text-slate-400 whitespace-nowrap">Ongkir Standar</span>
+                    </div>
+                  </div>
+                )}
           </div>
         </div>
 
