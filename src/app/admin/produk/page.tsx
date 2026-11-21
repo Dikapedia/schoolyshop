@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import Image from "next/image";
 import { formatRupiah } from "@/lib/format";
+import { resolveImageUrl } from "@/lib/image-url";
 import {
   createAdminProduct,
   deleteAdminProduct,
   getAdminCategories,
   getAdminProducts,
   updateAdminProduct,
+  uploadAdminProductImage,
   type AdminProduct,
   type ProductStatus,
 } from "@/api/admin/products";
@@ -41,6 +44,22 @@ const emptyAddForm = (seller = "", category = ""): EditForm => ({
 });
 
 function ProductThumb({ product }: { product: AdminProduct }) {
+  const image = resolveImageUrl(product.image);
+
+  if (image) {
+    return (
+      <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-slate-100">
+        <Image
+          src={image}
+          alt={product.name}
+          fill
+          sizes="36px"
+          className="object-cover"
+        />
+      </div>
+    );
+  }
+
   const name = product.name.toLowerCase();
   const boxClass = product.isNew ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600";
 
@@ -121,6 +140,8 @@ export default function KelolaProdukPage() {
   const [addForm, setAddForm] = useState<EditForm>(emptyAddForm);
   const [addError, setAddError] = useState("");
   const [toast, setToast] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState("");
 
   useEffect(() => {
     if (!data) return;
@@ -226,6 +247,26 @@ export default function KelolaProdukPage() {
     setEditing(null);
     setForm(null);
     setError("");
+    setImageError("");
+  };
+
+  const handleImageUpload = async (file: File | null) => {
+    if (!file || !editing) return;
+
+    setUploadingImage(true);
+    setImageError("");
+
+    try {
+      const updated = await uploadAdminProductImage(editing.id, file);
+      setEditing(updated);
+      setProducts((prev) =>
+        prev.map((product) => (product.id === updated.id ? updated : product)),
+      );
+    } catch (cause) {
+      setImageError(getApiErrorMessage(cause));
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSave = async () => {
@@ -721,6 +762,53 @@ export default function KelolaProdukPage() {
               {error && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
               )}
+
+              <div>
+                <label className="text-sm font-medium text-slate-700">Foto Produk</label>
+                <div className="mt-2 flex items-center gap-4">
+                  <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                    {resolveImageUrl(editing.image) ? (
+                      <Image
+                        src={resolveImageUrl(editing.image) as string}
+                        alt={editing.name}
+                        fill
+                        sizes="80px"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <span className="grid h-full place-items-center text-2xl text-slate-300">
+                        🖼️
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <label
+                      className={`inline-flex cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 ${
+                        uploadingImage ? "pointer-events-none opacity-50" : ""
+                      }`}
+                    >
+                      {uploadingImage ? "Mengunggah..." : "Pilih Gambar"}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="sr-only"
+                        disabled={uploadingImage}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0] ?? null;
+                          void handleImageUpload(file);
+                          event.target.value = "";
+                        }}
+                      />
+                    </label>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      JPEG, PNG, atau WebP. Maksimal 5 MB.
+                    </p>
+                    {imageError && (
+                      <p className="mt-1 text-[11px] font-medium text-red-600">{imageError}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
 
               <div>
                 <label className="text-sm font-medium text-slate-700">Nama Produk <span className="text-red-500">*</span></label>

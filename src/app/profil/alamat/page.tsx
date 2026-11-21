@@ -14,6 +14,7 @@ import {
 import { useRouter } from "next/navigation";
 import { inter } from "@/lib/fonts";
 import { site } from "@/lib/site";
+import { useHydrated } from "@/lib/use-hydrated";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 
@@ -28,42 +29,36 @@ const emptyForm = {
 export default function AlamatPengirimanPage() {
   const session = useSession();
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
+  const hydrated = useHydrated();
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!session && mounted) {
+    if (!session && hydrated) {
       router.replace("/login?next=" + encodeURIComponent("/profil/alamat"));
     }
-  }, [session, router, mounted]);
+  }, [session, router, hydrated]);
 
-  const [addresses, setAddresses] = useState<Address[]>(() =>
-    session && mounted ? listAddresses(session.id) : []);
+  if (!session) return null;
 
-  // Populate demo address if none
-  useEffect(() => {
-    if (session && addresses.length === 0) {
-      setAddresses([getDemoAddress(`address-demo-${Date.now()}`)]);
-    }
-  }, [session, addresses.length]);
+  return <AddressBook key={session.id} userId={session.id} />;
+}
+
+function AddressBook({ userId }: { userId: string }) {
+  const [addresses, setAddresses] = useState<Address[]>(() => {
+    const stored = listAddresses(userId);
+    return stored.length > 0
+      ? stored
+      : [getDemoAddress(`address-demo-${Date.now()}`)];
+  });
 
   // Persist addresses per‑user
   useEffect(() => {
-    if (session) {
-      saveAddresses(session.id, addresses);
-    }
-  }, [addresses, session]);
+    saveAddresses(userId, addresses);
+  }, [addresses, userId]);
+
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState("");
-
-  if (!session) {
-    return null;
-  }
 
   function openAddForm() {
     setEditingId(null);

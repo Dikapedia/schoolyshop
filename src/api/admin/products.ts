@@ -1,5 +1,5 @@
-import { ApiError } from "../errors";
-import { adminRequest } from "./client";
+import { ApiError, errorFromResponse } from "../errors";
+import { adminRequest, ADMIN_API_URL } from "./client";
 import { getAdminSellers } from "./sellers";
 import { fetchAllAdminPages } from "./shared";
 
@@ -229,6 +229,42 @@ export async function updateAdminProduct(
 /** DELETE /admin/products/:id */
 export function deleteAdminProduct(id: number): Promise<void> {
   return adminRequest<void>(`/admin/products/${id}`, { method: "DELETE" });
+}
+
+/**
+ * POST /admin/products/:id/image (multipart/form-data).
+ *
+ * `request()` hanya mengirim JSON, jadi unggahan memakai fetch langsung dengan
+ * cookie sesi yang sama.
+ */
+export async function uploadAdminProductImage(
+  id: number,
+  file: File,
+): Promise<AdminProduct> {
+  const form = new FormData();
+  form.append("image", file);
+
+  let response: Response;
+  try {
+    response = await fetch(`${ADMIN_API_URL}/admin/products/${id}/image`, {
+      method: "POST",
+      body: form,
+      credentials: "include",
+    });
+  } catch {
+    throw new ApiError(
+      "NETWORK",
+      "Tidak dapat terhubung ke server. Periksa koneksi Anda lalu coba lagi.",
+    );
+  }
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined);
+    throw errorFromResponse(response.status, payload);
+  }
+
+  const row = (await response.json()) as AdminProductRow;
+  return mapProduct(row);
 }
 
 /** GET /admin/categories */
