@@ -63,6 +63,22 @@ export const productListSchema = z.object({
   meta: paginationMetaSchema,
 });
 
+export const relatedProductListSchema = z.object({
+  data: z.array(productSummarySchema),
+});
+
+export const categorySchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  slug: z.string(),
+  productCount: z.number(),
+});
+export type CustomerCategory = z.infer<typeof categorySchema>;
+
+export const categoryListSchema = z.object({
+  data: z.array(categorySchema),
+});
+
 /* ------------------------------------------------------------------ */
 /* Keranjang                                                           */
 /* ------------------------------------------------------------------ */

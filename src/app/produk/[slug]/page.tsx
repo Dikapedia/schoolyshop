@@ -1,40 +1,32 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import ProductDetail from "@/components/shop/ProductDetail";
-import {
-  getProductBySlug,
-  getRelatedProducts,
-  listProducts,
-} from "@/api/products";
+import { Suspense } from "react";
+import ProductPageClient from "./product-page-client";
 
-type Params = { slug: string };
+export const metadata: Metadata = {
+  title: "Detail Produk | Schooly Shop",
+  description:
+    "Lihat detail produk kreatif warga sekolah: harga, stok, ukuran, penjual, dan ulasan.",
+};
 
-export function generateStaticParams(): Params[] {
-  return listProducts().map((product) => ({ slug: product.slug }));
-}
-
-export async function generateMetadata({
+export default function ProductPage({
   params,
 }: {
-  params: Promise<Params>;
-}): Promise<Metadata> {
-  const { slug } = await params;
-  const product = getProductBySlug(slug);
-  if (!product) return { title: "Produk tidak ditemukan | Schooly Shop" };
-  return {
-    title: `${product.name} | Schooly Shop`,
-    description: product.description,
-  };
-}
-
-export default async function ProductPage({
-  params,
-}: {
-  params: Promise<Params>;
+  params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params;
-  const product = getProductBySlug(slug);
-  if (!product) notFound();
+  return (
+    <Suspense fallback={<ProductPageFallback />}>
+      <ProductPageClient params={params} />
+    </Suspense>
+  );
+}
 
-  return <ProductDetail product={product} related={getRelatedProducts(product)} />;
+function ProductPageFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+      <div className="flex items-center gap-3 text-sm text-slate-500">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-200 border-t-blue-600" />
+        Memuat produk…
+      </div>
+    </div>
+  );
 }
