@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { CartIcon, SearchIcon, ShoppingBagIcon } from "@/components/icons";
 import { clearSession } from "@/api/auth";
 import { useSession } from "@/api/auth";
-import { useCartCount } from "@/api/cart";
+import { useCustomerCartCount } from "@/api/customer/cart";
 import { site } from "@/lib/site";
 
 type NavItem = { label: string; href: string; external?: boolean };
@@ -27,7 +27,7 @@ const solidButton =
 
 export default function SiteHeader() {
   const router = useRouter();
-  const count = useCartCount();
+  const count = useCustomerCartCount();
   const session = useSession();
   const [query, setQuery] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);

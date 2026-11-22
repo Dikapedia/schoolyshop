@@ -3,18 +3,20 @@
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { inter } from "@/lib/fonts";
-import { useHydrated } from "@/lib/use-hydrated";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { useSession } from "@/api/auth";
-import { listReturns } from "@/api/returns";
+import { useHydrated } from "@/lib/use-hydrated";
+import {
+  listReturns,
+} from "@/api/returns";
 
 export default function ReturnStatusPage() {
   const router = useRouter();
   const session = useSession();
   const hydrated = useHydrated();
   const data = useMemo(
-    () => (session ? listReturns(session.id) : []),
+    () => (session ? listReturns(session.id) : null),
     [session],
   );
   const returns = data ?? [];

@@ -3,10 +3,10 @@
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { inter } from "@/lib/fonts";
-import { useHydrated } from "@/lib/use-hydrated";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { useSession } from "@/api/auth";
+import { useHydrated } from "@/lib/use-hydrated";
 import { listReviews } from "@/api/reviews";
 
 export default function UlasanRiwayatPage() {
@@ -14,7 +14,7 @@ export default function UlasanRiwayatPage() {
   const session = useSession();
   const hydrated = useHydrated();
   const data = useMemo(
-    () => (session ? listReviews(session.id) : []),
+    () => (session ? listReviews(session.id) : null),
     [session],
   );
   const reviews = data ?? [];

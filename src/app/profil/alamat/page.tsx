@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSession } from "@/api/auth";
 import {
@@ -32,34 +32,33 @@ export default function AlamatPengirimanPage() {
   const hydrated = useHydrated();
 
   useEffect(() => {
-    if (hydrated && !session) {
+    if (!session && hydrated) {
       router.replace("/login?next=" + encodeURIComponent("/profil/alamat"));
     }
   }, [session, router, hydrated]);
 
-  const initialAddresses = useMemo(() => {
-    if (!session) return [];
-    const all = listAddresses(session.id);
-    return all.length > 0 ? all : [getDemoAddress()];
-  }, [session]);
+  if (!session) return null;
 
-  const [savedAddresses, setAddresses] = useState<Address[] | null>(null);
-  const addresses = savedAddresses ?? initialAddresses;
+  return <AddressBook key={session.id} userId={session.id} />;
+}
 
-  // Persist addresses per‑user setelah ada perubahan
+function AddressBook({ userId }: { userId: string }) {
+  const [addresses, setAddresses] = useState<Address[]>(() => {
+    const stored = listAddresses(userId);
+    return stored.length > 0
+      ? stored
+      : [getDemoAddress(`address-demo-${Date.now()}`)];
+  });
+
+  // Persist addresses per‑user
   useEffect(() => {
-    if (session && savedAddresses) {
-      saveAddresses(session.id, savedAddresses);
-    }
-  }, [savedAddresses, session]);
+    saveAddresses(userId, addresses);
+  }, [addresses, userId]);
+
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState("");
-
-  if (!session) {
-    return null;
-  }
 
   function openAddForm() {
     setEditingId(null);
@@ -95,8 +94,8 @@ export default function AlamatPengirimanPage() {
     }
 
     if (editingId) {
-      setAddresses(
-        addresses.map((address) =>
+      setAddresses((current) =>
+        current.map((address) =>
           address.id === editingId
             ? {
                 ...address,
@@ -120,17 +119,17 @@ export default function AlamatPengirimanPage() {
         badges: ["Rumah"],
         isPrimary: addresses.length === 0,
       };
-      setAddresses([...addresses, newAddress]);
+      setAddresses((current) => [...current, newAddress]);
     }
     closeForm();
   }
 
   function setPrimary(id: string) {
-    setAddresses(setPrimaryAddress(addresses, id));
+    setAddresses((current) => setPrimaryAddress(current, id));
   }
 
   function handleRemoveAddress(id: string) {
-    setAddresses(removeAddress(addresses, id));
+    setAddresses((current) => removeAddress(current, id));
   }
 
   return (

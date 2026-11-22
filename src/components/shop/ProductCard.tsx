@@ -5,7 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { CheckIcon, ImageIcon, PlusIcon } from "@/components/icons";
 import { formatRupiah } from "@/lib/format";
-import { addToCartWithAuth } from "@/api/cart";
+import { addToCustomerCartBySlug } from "@/api/customer/cart";
+import { useSession } from "@/api/auth";
+import { getApiErrorMessage } from "@/api/errors";
 import type { Product, SellerRole } from "@/api/products";
 import { cx } from "@/lib/cx";
 import { useRouter } from "next/navigation";
@@ -28,23 +30,39 @@ const SELLER_STYLE: Record<SellerRole, { badge: string; dot: string; letter: str
   },
 };
 
+type AddState = "idle" | "loading" | "added" | "error";
+
 export default function ProductCard({ product }: { product: Product }) {
   const router = useRouter();
-  const [added, setAdded] = useState(false);
+  const session = useSession();
+  const [state, setState] = useState<AddState>("idle");
+  const [error, setError] = useState("");
   const timer = useRef<number | undefined>(undefined);
   const seller = SELLER_STYLE[product.seller.role];
   const href = `/produk/${product.slug}`;
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
-  function handleAdd() {
-    if (!addToCartWithAuth(product.id)) {
+  async function handleAdd() {
+    if (!session) {
       router.push(`/login?next=${encodeURIComponent(href)}`);
       return;
     }
-    setAdded(true);
-    window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setAdded(false), 1500);
+
+    setState("loading");
+    setError("");
+
+    try {
+      await addToCustomerCartBySlug({ slug: product.slug });
+      setState("added");
+      window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(() => setState("idle"), 1500);
+    } catch (cause: unknown) {
+      setState("error");
+      setError(getApiErrorMessage(cause, "Gagal menambahkan ke keranjang."));
+      window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(() => setState("idle"), 2500);
+    }
   }
 
   return (
@@ -102,17 +120,24 @@ export default function ProductCard({ product }: { product: Product }) {
         <button
           type="button"
           onClick={handleAdd}
+          disabled={state === "loading"}
           aria-live="polite"
           className={cx(
-            "mt-3 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg text-xs font-semibold text-white transition",
-            added ? "bg-emerald-600" : "bg-blue-600 hover:bg-blue-700",
+            "mt-3 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg text-xs font-semibold text-white transition disabled:opacity-60",
+            state === "added"
+              ? "bg-emerald-600"
+              : state === "error"
+                ? "bg-red-600"
+                : "bg-blue-600 hover:bg-blue-700",
           )}
         >
-          {added ? (
+          {state === "added" ? (
             <>
               <CheckIcon width={14} height={14} />
               Ditambahkan
             </>
+          ) : state === "loading" ? (
+            "Menambahkan..."
           ) : (
             <>
               <PlusIcon width={14} height={14} />
@@ -120,6 +145,9 @@ export default function ProductCard({ product }: { product: Product }) {
             </>
           )}
         </button>
+        {state === "error" && (
+          <p className="mt-1 text-[10px] font-medium text-red-600">{error}</p>
+        )}
       </div>
     </article>
   );
