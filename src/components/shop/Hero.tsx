@@ -35,7 +35,7 @@ export default function Hero() {
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link
-              href="/#katalog"
+              href="/produk"
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white shadow-md shadow-blue-600/25 transition hover:bg-blue-700"
             >
               Jelajahi Katalog

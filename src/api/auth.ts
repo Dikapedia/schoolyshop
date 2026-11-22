@@ -3,9 +3,11 @@ import { z } from "zod";
 import { request, USE_MOCK_AUTH } from "./client";
 import { ApiError } from "./errors";
 import {
+  readPasswordOverrides,
   readRegisteredAccounts,
   SEED_ACCOUNTS,
   sleep,
+  writePasswordOverride,
   writeRegisteredAccounts,
 } from "./mocks/auth";
 
@@ -66,6 +68,7 @@ export type ResetPasswordInput = z.infer<typeof resetPasswordInputSchema>;
 /** Endpoint reset password tidak mengembalikan body (HTTP 204/200 kosong). */
 export const forgotPasswordResponseSchema = z.void();
 export const resetPasswordResponseSchema = z.void();
+export const changePasswordResponseSchema = z.void();
 
 export type MockAccount = Session & {
   password: string;
@@ -217,8 +220,12 @@ async function mockLogin({ email, password }: LoginInput): Promise<Session> {
   const account = [...SEED_ACCOUNTS, ...readRegisteredAccounts()].find(
     (item) => item.email.toLowerCase() === key,
   );
+  const overrides = readPasswordOverrides();
+  const effectivePassword = account
+    ? (overrides[account.id] ?? account.password)
+    : undefined;
 
-  if (!account || account.password !== password) {
+  if (!account || effectivePassword !== password) {
     throw new ApiError("INVALID_CREDENTIALS", "Email atau kata sandi salah", {
       status: 401,
     });
@@ -282,33 +289,67 @@ async function mockResetPassword(): Promise<void> {
 }
 
 /**
- * Ubah kata sandi akun mock yang terdaftar di browser ini.
+ * Ubah kata sandi akun yang sedang masuk.
  *
- * TODO(backend): ganti dengan PATCH /users/me/password dan tangani 401/422
- * dari server.
+ * TODO(backend): konfirmasi kontrak `PATCH /users/me/password`, apakah respons
+ * 204 tanpa body, dan bentuk error saat kata sandi lama salah.
  */
-export function changePassword(input: ChangePasswordInput): void {
+export async function changePassword(
+  input: ChangePasswordInput,
+): Promise<void> {
   const parsed = parseInput(
     changePasswordInputSchema,
     input,
     "Data kata sandi tidak valid.",
   );
-  const accounts = readRegisteredAccounts();
-  const account = accounts.find((item) => item.id === parsed.userId);
 
-  if (!account || account.password !== parsed.currentPassword) {
+  if (USE_MOCK_AUTH) return mockChangePassword(parsed);
+
+  await request<void>("/users/me/password", {
+    method: "PATCH",
+    body: {
+      currentPassword: parsed.currentPassword,
+      newPassword: parsed.newPassword,
+    },
+    responseSchema: changePasswordResponseSchema,
+    statusMessages: {
+      401: "Kata sandi lama tidak sesuai.",
+      422: "Kata sandi baru tidak memenuhi syarat.",
+    },
+    statusCodes: {
+      401: "INVALID_CREDENTIALS",
+      422: "VALIDATION",
+    },
+  });
+}
+
+/**
+ * Ubah kata sandi akun mock.
+ *
+ * Akun seed tidak ikut tersimpan di localStorage, jadi password baru disimpan
+ * sebagai override per `id` dan diterapkan lagi saat login. Tanpa ini, akun
+ * demo selalu dianggap salah sandi lama.
+ */
+async function mockChangePassword(
+  input: ChangePasswordInput,
+): Promise<void> {
+  await sleep(400);
+
+  const account = [...SEED_ACCOUNTS, ...readRegisteredAccounts()].find(
+    (item) => item.id === input.userId,
+  );
+  const overrides = readPasswordOverrides();
+  const effectivePassword = account
+    ? (overrides[account.id] ?? account.password)
+    : undefined;
+
+  if (!account || effectivePassword !== input.currentPassword) {
     throw new ApiError("INVALID_CREDENTIALS", "Kata sandi lama tidak sesuai.", {
       status: 401,
     });
   }
 
-  writeRegisteredAccounts(
-    accounts.map((item) =>
-      item.id === parsed.userId
-        ? { ...item, password: parsed.newPassword }
-        : item,
-    ),
-  );
+  writePasswordOverride(account.id, input.newPassword);
 }
 
 /* ------------------------------------------------------------------ */

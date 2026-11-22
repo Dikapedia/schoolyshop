@@ -27,6 +27,7 @@ export const productSchema = z.object({
     role: sellerRoleSchema,
   }),
   image: z.string().optional(),
+  images: z.array(z.string()).optional(),
   description: z.string().optional(),
 });
 export type Product = z.infer<typeof productSchema>;
@@ -36,7 +37,29 @@ export type Product = z.infer<typeof productSchema>;
  * TODO(backend): ganti PRODUCT_MOCKS dengan GET /products setelah endpoint
  * tersedia; pertahankan validasi productSchema di batas API.
  */
-const products: Product[] = productSchema.array().parse(PRODUCT_MOCKS);
+/**
+ * Galeri 4 gambar per produk (utama + 3 varian) yang disimpan di /public/products.
+ * p1.png / p1a.png / p1b.png / p1c.png, dst.
+ */
+const PRODUCT_GALLERIES = new Map(
+  PRODUCT_MOCKS.map((product) => [
+    product.id,
+    [
+      `/products/${product.id}.png`,
+      `/products/${product.id}a.png`,
+      `/products/${product.id}b.png`,
+      `/products/${product.id}c.png`,
+    ],
+  ]),
+);
+
+const products: Product[] = productSchema
+  .array()
+  .parse(PRODUCT_MOCKS)
+  .map((product) => ({
+    ...product,
+    images: product.images ?? PRODUCT_GALLERIES.get(product.id),
+  }));
 
 /**
  * Daftar produk untuk katalog.
@@ -54,10 +77,30 @@ export function getProductBySlug(slug: string): Product | undefined {
   return products.find((product) => product.slug === slug);
 }
 
+/**
+ * Pemetaan ID produk lama dari seed pesanan demo ke produk katalog saat ini.
+ *
+ * Seed pesanan lama memakai `prod-101`...`prod-104`, sedangkan katalog
+ * memakai `p1`...`p24`. Tanpa pemetaan ini, ulasan dari pesanan demo tidak
+ * bisa diarahkan ke halaman produk yang benar.
+ */
+const LEGACY_PRODUCT_IDS: Record<string, string> = {
+  "prod-101": "p3",
+  "prod-102": "p12",
+  "prod-103": "p4",
+  "prod-104": "p1",
+};
+
+/** Normalisasi ID produk lama ke ID katalog yang berlaku. */
+export function resolveProductId(id: string): string {
+  return LEGACY_PRODUCT_IDS[id] ?? id;
+}
+
 /** Cari satu produk berdasarkan ID. */
 export function getProductById(id: string): Product | undefined {
   // TODO(backend): ganti dengan GET /products/:id.
-  return products.find((product) => product.id === id);
+  const normalizedId = resolveProductId(id);
+  return products.find((product) => product.id === normalizedId);
 }
 
 /**

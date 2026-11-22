@@ -2,6 +2,7 @@ import type { MockAccount } from "../auth";
 import { readJson, writeJson } from "./storage";
 
 const MOCK_ACCOUNTS_KEY = "schooly.mock.users";
+const PASSWORD_OVERRIDE_KEY = "schooly.mock.passwords";
 
 /**
  * Akun demo. Akun hasil registrasi disimpan di localStorage browser.
@@ -41,6 +42,26 @@ export function readRegisteredAccounts(): MockAccount[] {
 
 export function writeRegisteredAccounts(accounts: MockAccount[]): void {
   writeJson(MOCK_ACCOUNTS_KEY, accounts);
+}
+
+/**
+ * Override kata sandi per akun id, disimpan di localStorage.
+ *
+ * Dipakai oleh `mockChangePassword` agar akun seed (yang tidak ada di
+ * `readRegisteredAccounts`) bisa mengubah kata sandi tanpa mengubah
+ * konstanta `SEED_ACCOUNTS`.
+ */
+export function readPasswordOverrides(): Record<string, string> {
+  return readJson<Record<string, string>>(PASSWORD_OVERRIDE_KEY, {});
+}
+
+export function writePasswordOverride(
+  accountId: string,
+  password: string,
+): void {
+  const current = readPasswordOverrides();
+  current[accountId] = password;
+  writeJson(PASSWORD_OVERRIDE_KEY, current);
 }
 
 export function sleep(ms: number): Promise<void> {

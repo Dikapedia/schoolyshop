@@ -91,7 +91,7 @@ export default function CartView() {
             : "Silakan masuk terlebih dahulu untuk menyimpan produk dan melanjutkan checkout."}
         </p>
         <Link
-          href={session ? "/#katalog" : "/login?next=/keranjang"}
+          href={session ? "/produk" : "/login?next=/keranjang"}
           className="mt-6 inline-flex h-11 items-center justify-center rounded-xl bg-blue-600 px-6 text-sm font-semibold text-white transition hover:bg-blue-700"
         >
           {session ? "Mulai Belanja" : "Masuk"}

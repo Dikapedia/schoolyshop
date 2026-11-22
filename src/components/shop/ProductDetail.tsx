@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckIcon, ImageIcon } from "@/components/icons";
 import { cx } from "@/lib/cx";
@@ -12,6 +12,7 @@ import { addToCustomerCartBySlug } from "@/api/customer/cart";
 import { useSession } from "@/api/auth";
 import { getApiErrorMessage } from "@/api/errors";
 import type { Product } from "@/api/products";
+import { useProductReviews } from "@/api/reviews";
 import { site, whatsappLink } from "@/lib/site";
 import SiteFooter from "./SiteFooter";
 import SiteHeader from "./SiteHeader";
@@ -72,8 +73,30 @@ export default function ProductDetail({ product, related }: { product: Product; 
   const [added, setAdded] = useState(false);
   const [adding, setAdding] = useState(false);
   const [cartError, setCartError] = useState("");
+  const productReviews = useProductReviews(product.id);
+  const averageRating = productReviews.length
+    ? productReviews.reduce((sum, review) => sum + review.rating, 0) /
+      productReviews.length
+    : extra.rating;
+  const reviewCount = productReviews.length || extra.reviews;
 
-  const thumbnails = useMemo(() => [0, 1, 2, 3], []);
+  // Setelah diarahkan dari halaman ulasan, gulir ke daftar ulasan.
+  useEffect(() => {
+    if (window.location.hash !== "#ulasan") return;
+    document
+      .getElementById("ulasan")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [productReviews.length]);
+
+  const gallery = useMemo(
+    () =>
+      product.images && product.images.length > 0
+        ? product.images
+        : product.image
+          ? [product.image]
+          : [],
+    [product],
+  );
 
   async function handleAdd(): Promise<boolean> {
     if (!session) {
@@ -143,9 +166,9 @@ export default function ProductDetail({ product, related }: { product: Product; 
             <div className="grid gap-0 lg:grid-cols-[1.05fr_1fr]">
               <div className="border-b border-slate-200 p-3 sm:p-4 lg:border-b-0 lg:border-r">
                 <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-[linear-gradient(135deg,#f1f5f9,#e2e8f0)]">
-                  {product.image ? (
+                  {gallery[activeThumb] ? (
                     <Image
-                      src={product.image}
+                      src={gallery[activeThumb]}
                       alt={product.name}
                       fill
                       sizes="(min-width:1024px) 560px, 100vw"
@@ -178,9 +201,9 @@ export default function ProductDetail({ product, related }: { product: Product; 
                 </div>
 
                 <div className="mt-3 grid grid-cols-4 gap-2">
-                  {thumbnails.map((i) => (
+                  {gallery.map((src, i) => (
                     <button
-                      key={i}
+                      key={src}
                       type="button"
                       onClick={() => setActiveThumb(i)}
                       aria-label={`Gambar ${i + 1}`}
@@ -191,13 +214,7 @@ export default function ProductDetail({ product, related }: { product: Product; 
                           : "border-slate-200 hover:border-slate-300",
                       )}
                     >
-                      {product.image ? (
-                        <Image src={product.image} alt="" fill className="object-cover opacity-90" sizes="140px" />
-                      ) : (
-                        <span className="grid h-full place-items-center text-slate-300">
-                          <ImageIcon width={20} height={20} />
-                        </span>
-                      )}
+                      <Image src={src} alt="" fill className="object-cover opacity-90" sizes="140px" />
                     </button>
                   ))}
                 </div>
@@ -223,10 +240,13 @@ export default function ProductDetail({ product, related }: { product: Product; 
                   </span>
                   <span className="text-xs text-slate-400 line-through">{formatRupiah(extra.original)}</span>
                   <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-[11px] font-bold text-red-600">-{extra.discount}%</span>
-                  <span className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-slate-600">
-                    <span className="text-amber-500">★</span> {extra.rating.toFixed(1)}
-                    <span className="font-normal text-slate-500">({extra.reviews} Ulasan Warga Sekolah)</span>
-                  </span>
+                  <a
+                    href="#ulasan"
+                    className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-blue-600"
+                  >
+                    <span className="text-amber-500">★</span> {averageRating.toFixed(1)}
+                    <span className="font-normal text-slate-500">({reviewCount} Ulasan Warga Sekolah)</span>
+                  </a>
                 </div>
 
                 <div className="mt-4 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
@@ -374,6 +394,74 @@ export default function ProductDetail({ product, related }: { product: Product; 
               )}
             </div>
           </div>
+
+          <section
+            id="ulasan"
+            className="mt-8 scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-5"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="inline-flex items-center gap-2 text-sm font-bold text-slate-900">
+                <span aria-hidden className="h-2 w-2 rounded-full bg-blue-600" />
+                Ulasan Pembeli
+              </h2>
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                {productReviews.length} ulasan
+              </span>
+            </div>
+
+            {productReviews.length === 0 ? (
+              <p className="mt-4 text-sm text-slate-500">
+                Belum ada ulasan untuk produk ini. Selesaikan pesanan lalu
+                bagikan pengalaman Anda.
+              </p>
+            ) : (
+              <ul className="mt-4 divide-y divide-slate-100">
+                {productReviews.map((review) => (
+                  <li
+                    key={`${review.orderId}-${review.productId}-${review.submittedAt}`}
+                    className="py-4 first:pt-0 last:pb-0"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="grid h-8 w-8 place-items-center rounded-full bg-blue-50 text-xs font-bold text-blue-700">
+                          P
+                        </span>
+                        <div>
+                          <p className="text-xs font-semibold text-slate-900">
+                            Pembeli Terverifikasi
+                          </p>
+                          <p className="text-[11px] text-slate-400">
+                            {new Date(review.submittedAt).toLocaleDateString(
+                              "id-ID",
+                              { dateStyle: "long" },
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <span
+                        className="text-sm tracking-wide text-amber-500"
+                        aria-label={`Rating ${review.rating} dari 5`}
+                      >
+                        {"★".repeat(review.rating)}
+                        <span className="text-slate-200">
+                          {"★".repeat(5 - review.rating)}
+                        </span>
+                      </span>
+                    </div>
+                    {review.comment ? (
+                      <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                        {review.comment}
+                      </p>
+                    ) : (
+                      <p className="mt-2 text-xs italic text-slate-400">
+                        Tidak ada komentar.
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
 
           <section className="mt-8">
             <div className="flex flex-wrap items-center justify-between gap-2">

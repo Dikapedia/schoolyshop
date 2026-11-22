@@ -6,6 +6,7 @@ import { inter } from "@/lib/fonts";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { useSession } from "@/api/auth";
+import { useHydrated } from "@/lib/use-hydrated";
 import {
   listReturns,
 } from "@/api/returns";
@@ -13,6 +14,7 @@ import {
 export default function ReturnStatusPage() {
   const router = useRouter();
   const session = useSession();
+  const hydrated = useHydrated();
   const data = useMemo(
     () => (session ? listReturns(session.id) : null),
     [session],
@@ -22,10 +24,10 @@ export default function ReturnStatusPage() {
     session && data === null ? "Gagal memuat data pengembalian." : "";
 
   useEffect(() => {
-    if (!session) {
+    if (hydrated && !session) {
       router.replace("/login?next=/pesanan/status-pengembalian");
     }
-  }, [session, router]);
+  }, [session, router, hydrated]);
 
   if (!session) return null;
   if (error) return <div className="flex min-h-screen items-center justify-center text-slate-500">{error}</div>;
