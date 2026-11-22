@@ -7,7 +7,7 @@ import { inter } from "@/lib/fonts";
 
 export const metadata: Metadata = {
   title: "Katalog Produk | Schooly Shop",
-  description: "Jelajahi 24+ produk kreatif warga sekolah — seragam, alat tulis, kerajinan, makanan & minuman terverifikasi.",
+  description: "Jelajahi produk kreatif warga sekolah — seragam, alat tulis, kerajinan, makanan & minuman terverifikasi.",
 };
 
 export default function ProdukPage() {

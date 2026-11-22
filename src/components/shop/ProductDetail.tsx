@@ -11,74 +11,75 @@ import { formatRupiah } from "@/lib/format";
 import { addToCustomerCartBySlug } from "@/api/customer/cart";
 import { useSession } from "@/api/auth";
 import { getApiErrorMessage } from "@/api/errors";
-import type { Product } from "@/api/products";
+import type { Product, ProductVariant } from "@/api/products";
 import { useProductReviews } from "@/api/reviews";
 import { site, whatsappLink } from "@/lib/site";
 import SiteFooter from "./SiteFooter";
 import SiteHeader from "./SiteHeader";
 
-function hashCode(value: string): number {
-  let h = 0;
-  for (let i = 0; i < value.length; i++) h = ((h << 5) - h + value.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-
-function getExtra(product: Product) {
-  const h = hashCode(product.id);
-  const stock = 7 + (h % 18);
-  const rating = (46 + (h % 5)) / 10;
-  const reviews = 24 + (h % 180);
-  const discount = 5 + (h % 11);
-  const original = Math.round((product.price / (1 - discount / 100)) / 1000) * 1000;
-  const code = `PRD-${product.id.toUpperCase()}-${product.tag.slice(0, 3).toUpperCase()}`;
+function getProductMeta(
+  product: Product,
+  variant?: ProductVariant | null,
+) {
+  const stock = variant?.stock ?? product.stock;
+  const code = variant?.sku ?? `PRD-${product.numericId}`;
   const sellerSubtitle =
     product.seller.role === "Guru"
       ? "Pembina Koperasi Guru SMK"
       : product.seller.role === "Siswa"
-        ? `Kelas ${["X", "XI", "XII"][h % 3]} \u2022 OSIS SMK`
+        ? "Kelas X • OSIS SMK"
         : "Koperasi & Kantin Sekolah";
   const sellerInitial = product.seller.label.trim().charAt(0).toUpperCase();
-  const specs: { label: string; value: string }[] =
-    product.category === "Pakaian Sekolah"
-      ? [
-          { label: "Bahan Kain", value: ["Katun Halus 40s", "Dry-Fit Premium", "Twill Katun"][h % 3] },
-          { label: "Berat Fisik", value: `${260 + (h % 6) * 15} Gram` },
-          { label: "Standar Wajib", value: ["Seragam Kamis", "Seragam Senin", "Upacara"][h % 3] },
-        ]
-      : product.category === "Makanan" || product.category === "Minuman"
-        ? [
-            { label: "Berat Bersih", value: product.category === "Makanan" ? "200 Gram" : "250 ml" },
-            { label: "Ketahanan", value: "Siap Konsumsi" },
-            { label: "Varian", value: product.tag },
-          ]
-        : [
-            { label: "Bahan Utama", value: ["Akrilik Premium", "Kanvas Tebal", "Metal & Kertas"][h % 3] },
-            { label: "Berat", value: `${80 + (h % 8) * 20} Gram` },
-            { label: "Kategori", value: product.category },
-          ];
-  return { stock, rating, reviews, discount, original, code, sellerSubtitle, sellerInitial, specs };
+  const specs: { label: string; value: string }[] = [
+    { label: "Berat", value: `${product.weight} Gram` },
+    { label: "Kategori", value: product.category },
+    { label: "Tag", value: product.tag },
+  ];
+  return { stock, code, sellerSubtitle, sellerInitial, specs };
 }
 
-// TODO(backend): ukuran/varian dan stok per varian masih statis; gunakan
-// `variants[]` dari GET /products/:slug.
-const SIZES = ["S", "M", "L", "XL", "XXL"] as const;
+/**
+ * Tampilkan pemilih ukuran bila produk punya lebih dari satu varian, atau
+ * varian non-"All Size". Produk tanpa varian memakai stok gabungan produk.
+ */
+function shouldShowSizePicker(variants: ProductVariant[]): boolean {
+  if (variants.length === 0) return false;
+  if (variants.length > 1) return true;
+  return variants[0].size.toLowerCase() !== "all size";
+}
 
-export default function ProductDetail({ product, related }: { product: Product; related: Product[] }) {
+export default function ProductDetail({
+  product,
+  related,
+}: {
+  product: Product;
+  related: Product[];
+}) {
   const router = useRouter();
   const session = useSession();
-  const extra = useMemo(() => getExtra(product), [product]);
+  const extra = useMemo(
+    () => getProductMeta(product),
+    [product],
+  );
   const [activeThumb, setActiveThumb] = useState(0);
-  const [size, setSize] = useState<(typeof SIZES)[number]>("M");
+  const [selectedVariantId, setSelectedVariantId] = useState<
+    number | null
+  >(() => {
+    const firstInStock =
+      product.variants.find((variant) => variant.stock > 0) ??
+      product.variants[0];
+    return firstInStock?.id ?? null;
+  });
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
   const [adding, setAdding] = useState(false);
   const [cartError, setCartError] = useState("");
   const productReviews = useProductReviews(product.id);
+  const reviewCount = productReviews.length;
   const averageRating = productReviews.length
     ? productReviews.reduce((sum, review) => sum + review.rating, 0) /
       productReviews.length
-    : extra.rating;
-  const reviewCount = productReviews.length || extra.reviews;
+    : 0;
 
   // Setelah diarahkan dari halaman ulasan, gulir ke daftar ulasan.
   useEffect(() => {
@@ -88,17 +89,25 @@ export default function ProductDetail({ product, related }: { product: Product; 
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [productReviews.length]);
 
-  const gallery = useMemo(
-    () =>
-      product.images && product.images.length > 0
-        ? product.images
-        : product.image
-          ? [product.image]
-          : [],
-    [product],
+  const gallery = useMemo(() => product.images, [product]);
+
+  const selectedVariant = useMemo(
+    () => product.variants.find((variant) => variant.id === selectedVariantId) ?? null,
+    [product.variants, selectedVariantId],
   );
 
+  const activeMeta = useMemo(
+    () => getProductMeta(product, selectedVariant),
+    [product, selectedVariant],
+  );
+
+  const showSizePicker = shouldShowSizePicker(product.variants);
+  const displayPrice = product.price + (selectedVariant?.priceAdjustment ?? 0);
+  const maxQty = activeMeta.stock;
+  const outOfStock = activeMeta.stock <= 0;
+
   async function handleAdd(): Promise<boolean> {
+    if (outOfStock) return false;
     if (!session) {
       router.push(`/login?next=${encodeURIComponent(`/produk/${product.slug}`)}`);
       return false;
@@ -108,7 +117,11 @@ export default function ProductDetail({ product, related }: { product: Product; 
     setCartError("");
 
     try {
-      await addToCustomerCartBySlug({ slug: product.slug, qty, size });
+      await addToCustomerCartBySlug({
+        slug: product.slug,
+        qty,
+        size: selectedVariant?.size,
+      });
       setAdded(true);
       window.setTimeout(() => setAdded(false), 1400);
       return true;
@@ -146,7 +159,10 @@ export default function ProductDetail({ product, related }: { product: Product; 
               <span aria-hidden className="text-slate-300">
                 /
               </span>
-              <Link href={`/?kategori=${encodeURIComponent(product.category)}`} className="hover:text-blue-600">
+              <Link
+                href={`/produk?kategori=${encodeURIComponent(product.category)}`}
+                className="hover:text-blue-600"
+              >
                 {product.category}
               </Link>
               <span aria-hidden className="text-slate-300">
@@ -182,42 +198,30 @@ export default function ProductDetail({ product, related }: { product: Product; 
                   )}
                   <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow">
                     <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-white" />
-                    Resmi SMK
+                    {product.tag}
                   </span>
-                  <span className="absolute left-3 top-10 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-medium text-slate-700 shadow">
-                    100% Katun Primissima
-                  </span>
-                  <button
-                    type="button"
-                    aria-label="Perbesar gambar"
-                    className="absolute bottom-3 right-3 grid h-8 w-8 place-items-center rounded-full bg-white/90 text-slate-600 shadow hover:bg-white"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="11" cy="11" r="8" />
-                      <path d="m21 21-4.3-4.3" />
-                      <path d="M11 8v6M8 11h6" />
-                    </svg>
-                  </button>
                 </div>
 
-                <div className="mt-3 grid grid-cols-4 gap-2">
-                  {gallery.map((src, i) => (
-                    <button
-                      key={src}
-                      type="button"
-                      onClick={() => setActiveThumb(i)}
-                      aria-label={`Gambar ${i + 1}`}
-                      className={cx(
-                        "relative aspect-[4/3] overflow-hidden rounded-lg border bg-[linear-gradient(135deg,#f1f5f9,#e2e8f0)]",
-                        activeThumb === i
-                          ? "border-blue-600 ring-2 ring-blue-600/20"
-                          : "border-slate-200 hover:border-slate-300",
-                      )}
-                    >
-                      <Image src={src} alt="" fill className="object-cover opacity-90" sizes="140px" />
-                    </button>
-                  ))}
-                </div>
+                {gallery.length > 1 && (
+                  <div className="mt-3 grid grid-cols-4 gap-2">
+                    {gallery.map((src, i) => (
+                      <button
+                        key={src}
+                        type="button"
+                        onClick={() => setActiveThumb(i)}
+                        aria-label={`Gambar ${i + 1}`}
+                        className={cx(
+                          "relative aspect-[4/3] overflow-hidden rounded-lg border bg-[linear-gradient(135deg,#f1f5f9,#e2e8f0)]",
+                          activeThumb === i
+                            ? "border-blue-600 ring-2 ring-blue-600/20"
+                            : "border-slate-200 hover:border-slate-300",
+                        )}
+                      >
+                        <Image src={src} alt="" fill className="object-cover opacity-90" sizes="140px" />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col p-4 sm:p-6">
@@ -225,32 +229,50 @@ export default function ProductDetail({ product, related }: { product: Product; 
                   <span className="rounded-full bg-blue-50 px-2.5 py-1 font-semibold text-blue-700">
                     {product.category}
                   </span>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">
-                    <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    Stok Tersedia ({extra.stock})
+                  {outOfStock ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 font-semibold text-red-700">
+                      Stok Habis
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">
+                      <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      Stok Tersedia ({activeMeta.stock})
+                    </span>
+                  )}
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600">
+                    Kode: {activeMeta.code}
                   </span>
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600">Kode: {extra.code}</span>
                 </div>
 
-                <h1 className="mt-3 text-xl font-bold leading-snug text-slate-900 sm:text-[22px]">{product.name}</h1>
+                <h1 className="mt-3 text-xl font-bold leading-snug text-slate-900 sm:text-[22px]">
+                  {product.name}
+                </h1>
 
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <span className="rounded-lg bg-blue-600 px-3 py-1.5 text-xl font-bold text-white">
-                    {formatRupiah(product.price)}
+                    {formatRupiah(displayPrice)}
                   </span>
-                  <span className="text-xs text-slate-400 line-through">{formatRupiah(extra.original)}</span>
-                  <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-[11px] font-bold text-red-600">-{extra.discount}%</span>
-                  <a
-                    href="#ulasan"
-                    className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-blue-600"
-                  >
-                    <span className="text-amber-500">★</span> {averageRating.toFixed(1)}
-                    <span className="font-normal text-slate-500">({reviewCount} Ulasan Warga Sekolah)</span>
-                  </a>
+                  {reviewCount > 0 && (
+                    <a
+                      href="#ulasan"
+                      className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-blue-600"
+                    >
+                      <span className="text-amber-500">★</span>
+                      {averageRating.toFixed(1)}
+                      <span className="font-normal text-slate-500">
+                        ({reviewCount} Ulasan Warga Sekolah)
+                      </span>
+                    </a>
+                  )}
                 </div>
 
                 <div className="mt-4 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-                  <span className={cx("grid h-9 w-9 place-items-center rounded-full text-sm font-bold text-white", sellerRoleStyle)}>
+                  <span
+                    className={cx(
+                      "grid h-9 w-9 place-items-center rounded-full text-sm font-bold text-white",
+                      sellerRoleStyle,
+                    )}
+                  >
                     {extra.sellerInitial}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -263,7 +285,7 @@ export default function ProductDetail({ product, related }: { product: Product; 
                     <p className="mt-1 text-xs text-slate-500">{extra.sellerSubtitle}</p>
                   </div>
                   <a
-                    href={whatsappLink(`Halo, saya tertarik dengan ${product.name} (${extra.code})`)}
+                    href={whatsappLink(`Halo, saya tertarik dengan ${product.name} (${activeMeta.code})`)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hidden shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:inline-flex"
@@ -280,42 +302,62 @@ export default function ProductDetail({ product, related }: { product: Product; 
 
                 <div className="mt-4 grid grid-cols-3 gap-2">
                   {extra.specs.map((s) => (
-                    <div key={s.label} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                    <div
+                      key={s.label}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2.5"
+                    >
                       <p className="text-[11px] font-medium text-slate-500">{s.label}</p>
                       <p className="mt-0.5 text-xs font-semibold text-slate-900">{s.value}</p>
                     </div>
                   ))}
                 </div>
 
-                <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-slate-600">{product.description}</p>
+                <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-slate-600">
+                  {product.description}
+                </p>
 
-                {product.category === "Pakaian Sekolah" && (
+                {showSizePicker && (
                   <div className="mt-4">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold text-slate-900">
                         Pilih Ukuran
-                        <span className="ml-2 font-normal text-slate-500">Ukuran {size} siap diambil di Koperasi</span>
+                        {selectedVariant && (
+                          <span className="ml-2 font-normal text-slate-500">
+                            Ukuran {selectedVariant.size}
+                          </span>
+                        )}
                       </p>
-                      <button type="button" className="text-[11px] font-medium text-emerald-600 hover:underline">
-                        Panduan Ukuran (Panjang x Lebar)
+                      <button
+                        type="button"
+                        className="text-[11px] font-medium text-emerald-600 hover:underline"
+                      >
+                        Panduan Ukuran
                       </button>
                     </div>
-                    <div className="mt-2 flex gap-1.5">
-                      {SIZES.map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => setSize(s)}
-                          className={cx(
-                            "min-w-9 rounded-lg border px-3 py-1.5 text-xs font-semibold transition",
-                            size === s
-                              ? "border-blue-600 bg-blue-600 text-white"
-                              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
-                          )}
-                        >
-                          {s}
-                        </button>
-                      ))}
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {product.variants.map((variant) => {
+                        const disabled = variant.stock <= 0;
+                        return (
+                          <button
+                            key={variant.id}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => setSelectedVariantId(variant.id)}
+                            className={cx(
+                              "min-w-9 rounded-lg border px-3 py-1.5 text-xs font-semibold transition",
+                              selectedVariantId === variant.id
+                                ? "border-blue-600 bg-blue-600 text-white"
+                                : disabled
+                                  ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 line-through"
+                                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                            )}
+                          >
+                            {variant.size}
+                            {variant.priceAdjustment > 0 &&
+                              ` (+${formatRupiah(variant.priceAdjustment)})`}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -332,7 +374,9 @@ export default function ProductDetail({ product, related }: { product: Product; 
                 </span>
                 <div className="leading-tight">
                   <p className="text-xs font-semibold text-slate-900">Lokasi Pengambilan Internal</p>
-                  <p className="text-[11px] text-slate-600">Ruang Guru Lt. 2 atau Koperasi Siswa Gedung B</p>
+                  <p className="text-[11px] text-slate-600">
+                    Ruang Guru Lt. 2 atau Koperasi Siswa Gedung B
+                  </p>
                 </div>
                 <span className="ml-2 hidden rounded-full bg-emerald-500 px-2 py-1 text-[10px] font-bold text-white sm:inline-flex">
                   Siap Hari Ini
@@ -349,11 +393,13 @@ export default function ProductDetail({ product, related }: { product: Product; 
                   >
                     −
                   </button>
-                  <span className="min-w-7 text-center text-sm font-semibold text-slate-900">{qty}</span>
+                  <span className="min-w-7 text-center text-sm font-semibold text-slate-900">
+                    {qty}
+                  </span>
                   <button
                     type="button"
                     aria-label="Tambah jumlah"
-                    onClick={() => setQty((q) => Math.min(extra.stock, q + 1))}
+                    onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
                     className="grid h-7 w-7 place-items-center rounded-lg text-slate-700 hover:bg-slate-100"
                   >
                     +
@@ -362,13 +408,19 @@ export default function ProductDetail({ product, related }: { product: Product; 
                 <button
                   type="button"
                   onClick={handleAdd}
-                  disabled={adding}
+                  disabled={adding || outOfStock}
                   className={cx(
                     "inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border px-4 text-xs font-semibold transition disabled:opacity-60",
-                    added ? "border-emerald-200 bg-emerald-600 text-white" : "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100",
+                    outOfStock
+                      ? "border-slate-200 bg-slate-100 text-slate-400"
+                      : added
+                        ? "border-emerald-200 bg-emerald-600 text-white"
+                        : "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100",
                   )}
                 >
-                  {added ? (
+                  {outOfStock ? (
+                    "Stok Habis"
+                  ) : added ? (
                     <>
                       <CheckIcon width={14} height={14} /> Ditambahkan
                     </>
@@ -380,7 +432,7 @@ export default function ProductDetail({ product, related }: { product: Product; 
                 </button>
                 <button
                   type="button"
-                  disabled={adding}
+                  disabled={adding || outOfStock}
                   onClick={async () => {
                     if (await handleAdd()) router.push("/keranjang");
                   }}
@@ -405,11 +457,11 @@ export default function ProductDetail({ product, related }: { product: Product; 
                 Ulasan Pembeli
               </h2>
               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                {productReviews.length} ulasan
+                {reviewCount} ulasan
               </span>
             </div>
 
-            {productReviews.length === 0 ? (
+            {reviewCount === 0 ? (
               <p className="mt-4 text-sm text-slate-500">
                 Belum ada ulasan untuk produk ini. Selesaikan pesanan lalu
                 bagikan pengalaman Anda.
@@ -472,14 +524,17 @@ export default function ProductDetail({ product, related }: { product: Product; 
                   Koleksi Perlengkapan Sekolah
                 </span>
               </h2>
-              <Link href="/#katalog" className="text-xs font-semibold text-blue-600 hover:text-blue-700">
-                Lihat Semua (48 Produk Kampus) →
+              <Link
+                href="/produk"
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+              >
+                Lihat Semua →
               </Link>
             </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {related.map((p) => {
-                return (
+            {related.length > 0 && (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {related.map((p) => (
                   <Link
                     key={p.id}
                     href={`/produk/${p.slug}`}
@@ -499,12 +554,14 @@ export default function ProductDetail({ product, related }: { product: Product; 
                       <span className="mt-0.5 block text-[11px] text-slate-500">
                         {p.seller.role} • {p.seller.label.split("(")[0].trim()}
                       </span>
-                      <span className="mt-1 block text-xs font-bold text-blue-600">{formatRupiah(p.price)}</span>
+                      <span className="mt-1 block text-xs font-bold text-blue-600">
+                        {formatRupiah(p.price)}
+                      </span>
                     </span>
                   </Link>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
           </section>
         </div>
       </main>

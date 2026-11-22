@@ -40,10 +40,12 @@ export default function ProductCard({ product }: { product: Product }) {
   const timer = useRef<number | undefined>(undefined);
   const seller = SELLER_STYLE[product.seller.role];
   const href = `/produk/${product.slug}`;
+  const outOfStock = product.stock <= 0;
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   async function handleAdd() {
+    if (outOfStock) return;
     if (!session) {
       router.push(`/login?next=${encodeURIComponent(href)}`);
       return;
@@ -120,18 +122,22 @@ export default function ProductCard({ product }: { product: Product }) {
         <button
           type="button"
           onClick={handleAdd}
-          disabled={state === "loading"}
+          disabled={state === "loading" || outOfStock}
           aria-live="polite"
           className={cx(
             "mt-3 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg text-xs font-semibold text-white transition disabled:opacity-60",
-            state === "added"
-              ? "bg-emerald-600"
-              : state === "error"
-                ? "bg-red-600"
-                : "bg-blue-600 hover:bg-blue-700",
+            outOfStock
+              ? "bg-slate-300"
+              : state === "added"
+                ? "bg-emerald-600"
+                : state === "error"
+                  ? "bg-red-600"
+                  : "bg-blue-600 hover:bg-blue-700",
           )}
         >
-          {state === "added" ? (
+          {outOfStock ? (
+            "Stok Habis"
+          ) : state === "added" ? (
             <>
               <CheckIcon width={14} height={14} />
               Ditambahkan

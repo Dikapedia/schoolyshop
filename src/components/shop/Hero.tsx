@@ -1,14 +1,17 @@
+"use client";
+
 import Link from "next/link";
 import { CheckIcon, ArrowRightIcon, ImageIcon } from "@/components/icons";
-import { listProducts } from "@/api/products";
+import { useProducts } from "@/api/products";
 import { site, whatsappLink } from "@/lib/site";
-
-const products = listProducts();
 
 const secondaryButton =
   "inline-flex h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 transition hover:bg-slate-50";
 
 export default function Hero() {
+  const { data } = useProducts();
+  const productCount = data?.length ?? 0;
+
   return (
     <section className="relative overflow-hidden bg-[linear-gradient(100deg,#f6faff_0%,#eaf2ff_55%,#dbeafe_100%)]">
       {/* cahaya hijau lembut di latar */}
@@ -101,7 +104,7 @@ export default function Hero() {
               </div>
               <span className="absolute -bottom-1 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-700 shadow-md">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                {products.length}+ Karya Baru
+                {productCount > 0 ? `${productCount}+ ` : ""}Karya Baru
               </span>
             </div>
           </div>
