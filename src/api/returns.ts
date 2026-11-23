@@ -1,8 +1,48 @@
 import { z } from "zod";
-import { ApiError } from "./errors";
-import { RETURNS_KEY } from "./mocks/keys";
-import { readRaw, readUserMap, writeJson } from "./mocks/storage";
+import { request } from "./client";
 
+const returnStatusSchema = z.enum([
+  "Menunggu Keputusan",
+  "Disetujui",
+  "Ditolak",
+]);
+export type ReturnStatus = z.infer<typeof returnStatusSchema>;
+
+const returnItemRowSchema = z.object({
+  id: z.number(),
+  orderItemId: z.number().nullable(),
+  productId: z.number().nullable(),
+  productName: z.string(),
+  variantId: z.number().nullable(),
+  variantSize: z.string().nullable(),
+  qty: z.number(),
+  reason: z.string(),
+});
+
+const returnRowSchema = z.object({
+  id: z.number(),
+  orderId: z.number(),
+  status: returnStatusSchema,
+  decisionAt: z.string().nullable(),
+  refundMethod: z.string().nullable(),
+  refundProofUrl: z.string().nullable(),
+  adminNote: z.string().nullable(),
+  submittedAt: z.string(),
+  items: z.array(returnItemRowSchema),
+  photos: z.array(
+    z.object({
+      id: z.number(),
+      url: z.string(),
+      originalName: z.string(),
+      mimeType: z.string(),
+      size: z.number(),
+    }),
+  ),
+});
+
+const returnListSchema = z.object({ data: z.array(returnRowSchema) });
+
+/** Bentuk retur yang dipakai halaman lama (ID sebagai string). */
 export const returnItemSchema = z.object({
   productId: z.string(),
   name: z.string(),
@@ -12,89 +52,77 @@ export const returnItemSchema = z.object({
 export type ReturnItem = z.infer<typeof returnItemSchema>;
 
 export const returnRequestSchema = z.object({
+  id: z.string(),
   orderId: z.string(),
-  items: z.array(returnItemSchema),
+  status: returnStatusSchema,
+  adminNote: z.string().nullable(),
   submittedAt: z.string(),
+  items: z.array(returnItemSchema),
 });
 export type ReturnRequest = z.infer<typeof returnRequestSchema>;
 
-export const createReturnInputSchema = returnRequestSchema.omit({
-  submittedAt: true,
-});
-export type CreateReturnInput = z.infer<typeof createReturnInputSchema>;
+export type CreateReturnInput = {
+  orderId: number;
+  items: Array<{ orderItemId: number; qty: number; reason: string }>;
+};
 
-/**
- * Daftar pengembalian user.
- *
- * `null` berarti data rusak/tidak bisa dibaca; daftar kosong berarti user
- * memang belum pernah mengajukan pengembalian.
- *
- * TODO(backend): ganti dengan GET /returns?userId=me dan gunakan status
- * pengembalian dari server.
- */
-export function listReturns(userId: string): ReturnRequest[] | null {
-  const raw = readRaw(RETURNS_KEY);
-  if (!raw) return [];
+function toReturn(row: z.infer<typeof returnRowSchema>): ReturnRequest {
+  return {
+    id: String(row.id),
+    orderId: String(row.orderId),
+    status: row.status,
+    adminNote: row.adminNote,
+    submittedAt: row.submittedAt,
+    items: row.items.map((item) => ({
+      productId: String(item.productId ?? item.orderItemId ?? item.id),
+      name: item.productName,
+      qty: item.qty,
+      reason: item.reason,
+    })),
+  };
+}
 
-  const all = readUserMap<unknown>(RETURNS_KEY);
-  if (!all) return null;
+/** GET /returns */
+export async function listReturns(): Promise<ReturnRequest[]> {
+  const payload = await request("/returns", { responseSchema: returnListSchema });
+  return payload.data.map(toReturn);
+}
 
-  const parsed = returnRequestSchema.array().safeParse(all[userId]);
-  return parsed.success ? parsed.data : null;
+/** POST /returns */
+export async function createReturn(
+  input: CreateReturnInput,
+): Promise<ReturnRequest> {
+  const row = await request("/returns", {
+    method: "POST",
+    body: input,
+    responseSchema: returnRowSchema,
+    statusMessages: {
+      409: "Pesanan sudah memiliki pengajuan retur aktif.",
+      422: "Pesanan belum dapat diretur.",
+    },
+  });
+  return toReturn(row);
 }
 
 /**
- * Buat permintaan pengembalian baru.
+ * Upload foto bukti pengembalian.
  *
- * TODO(backend): ganti dengan POST /returns. Upload foto barang dan
- * keputusan admin belum memiliki kontrak final.
+ * Backend menerima `multipart/form-data` dengan field `photos` (array file),
+ * endpoint: `POST /returns/:id/photos`.
  */
-export function createReturn(
-  userId: string,
-  input: CreateReturnInput,
-): ReturnRequest {
-  const parsed = createReturnInputSchema.safeParse(input);
-  if (!parsed.success) {
-    throw new ApiError("VALIDATION", "Data pengembalian tidak valid.", {
-      details: { issues: parsed.error.issues },
-    });
+export async function uploadReturnPhoto(
+  returnId: number,
+  files: File[],
+): Promise<ReturnRequest> {
+  const formData = new FormData();
+  for (const file of files) {
+    formData.append("photos", file);
   }
 
-  const raw = readRaw(RETURNS_KEY);
-  let all: Record<string, unknown> = {};
-
-  if (raw) {
-    try {
-      const existing = JSON.parse(raw) as unknown;
-      if (
-        !existing ||
-        typeof existing !== "object" ||
-        Array.isArray(existing)
-      ) {
-        throw new Error("invalid returns storage");
-      }
-      all = existing as Record<string, unknown>;
-    } catch {
-      throw new ApiError(
-        "SERVER",
-        "Gagal menyimpan permintaan pengembalian.",
-      );
-    }
-  }
-
-  const current = Array.isArray(all[userId])
-    ? (all[userId] as ReturnRequest[])
-    : [];
-  const request: ReturnRequest = {
-    ...parsed.data,
-    // TODO(backend): timestamp sebaiknya dibuat server, bukan browser.
-    submittedAt: new Date().toISOString(),
-  };
-  all[userId] = [...current, request];
-
-  if (!writeJson(RETURNS_KEY, all)) {
-    throw new ApiError("SERVER", "Gagal menyimpan permintaan pengembalian.");
-  }
-
-  return request;
+  const row = await request(`/returns/${returnId}/photos`, {
+    method: "POST",
+    body: formData,
+    responseSchema: returnRowSchema,
+  });
+  return toReturn(row);
 }

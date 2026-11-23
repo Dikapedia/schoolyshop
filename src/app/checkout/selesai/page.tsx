@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { inter } from "@/lib/fonts";
 import { site } from "@/lib/site";
@@ -8,7 +8,8 @@ import { useHydrated } from "@/lib/use-hydrated";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { useSession } from "@/api/auth";
-import { listOrders } from "@/api/orders";
+import { getCustomerOrder, type CustomerOrder } from "@/api/customer/orders";
+import { getApiErrorMessage } from "@/api/errors";
 import { formatRupiah } from "@/lib/format";
 
 export default function CheckoutSelesaiPage() {
@@ -24,20 +25,12 @@ function CheckoutSelesaiContent() {
   const searchParams = useSearchParams();
   const session = useSession();
   const hydrated = useHydrated();
-  const orderId = searchParams.get("order") ?? "";
+  const orderId = Number(searchParams.get("order") ?? "");
+  const validOrderId = Number.isFinite(orderId) && orderId > 0;
 
-  const { order, error } = useMemo(() => {
-    if (!session) return { order: null, error: "" };
-    if (!orderId) return { order: null, error: "Nomor pesanan tidak ditemukan." };
-    const list = listOrders(session.id);
-    if (list === null)
-      return { order: null, error: "Gagal membaca data pesanan." };
-    const found = list.find((item) => item.id === orderId) ?? null;
-    return {
-      order: found,
-      error: found ? "" : "Pesanan tidak ditemukan.",
-    };
-  }, [session, orderId]);
+  const [order, setOrder] = useState<CustomerOrder | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (hydrated && !session) {
@@ -45,11 +38,41 @@ function CheckoutSelesaiContent() {
     }
   }, [session, router, hydrated]);
 
+  useEffect(() => {
+    if (!session || !validOrderId) return;
+
+    let active = true;
+    getCustomerOrder(orderId)
+      .then((found) => {
+        if (active) setOrder(found);
+      })
+      .catch((cause: unknown) => {
+        if (active) setError(getApiErrorMessage(cause, "Pesanan tidak ditemukan."));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [session, orderId, validOrderId]);
+
   if (!session) return null;
+  if (!validOrderId) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-slate-500">
+        Nomor pesanan tidak ditemukan.
+      </div>
+    );
+  }
+  if (loading) {
+    return <div className="flex min-h-screen items-center justify-center text-slate-500">Memuat…</div>;
+  }
   if (error || !order) {
     return (
       <div className="flex min-h-screen items-center justify-center text-slate-500">
-        {error ?? "Pesanan tidak ditemukan."}
+        {error || "Pesanan tidak ditemukan."}
       </div>
     );
   }
@@ -73,7 +96,7 @@ function CheckoutSelesaiContent() {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Tanggal</span>
-                <span>{new Date(order.date).toLocaleDateString("id-ID", { dateStyle: "full" })}</span>
+                <span>{new Date(order.createdAt).toLocaleDateString("id-ID", { dateStyle: "full" })}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Total</span>

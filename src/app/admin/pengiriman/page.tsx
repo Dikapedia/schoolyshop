@@ -30,6 +30,7 @@ import {
 } from "@/components/admin/ui";
 import { getApiErrorMessage } from "@/api/errors";
 import { useAsyncData } from "@/lib/use-async-data";
+import { site } from "@/lib/site";
 
 function ClipboardIcon({ className }: { className?: string }) {
   return (
@@ -378,6 +379,7 @@ export default function PengirimanPage() {
       {createFor && (
         <KonfirmasiPengirimanModal
           shipment={createFor}
+          address={orderDetail?.buyer?.address ?? site.address ?? "-"}
           orderDetail={orderDetail ?? undefined}
           shippingRates={shippingRates}
           selectedRateId={selectedRateId}

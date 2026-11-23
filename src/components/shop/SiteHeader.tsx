@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CartIcon, SearchIcon, ShoppingBagIcon } from "@/components/icons";
 import { clearSession } from "@/api/auth";
-import { useSession } from "@/api/auth";
+import { useSession, useSessionSync } from "@/api/auth";
 import { useCustomerCartCount } from "@/api/customer/cart";
 import { site } from "@/lib/site";
 
@@ -29,6 +29,7 @@ export default function SiteHeader() {
   const router = useRouter();
   const count = useCustomerCartCount();
   const session = useSession();
+  useSessionSync();
   const [query, setQuery] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);

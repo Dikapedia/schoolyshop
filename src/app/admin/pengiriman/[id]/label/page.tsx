@@ -4,23 +4,31 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ChevronLeftIcon, PrinterIcon } from "@/components/icons";
 import { getAdminShipmentDetail } from "@/api/admin/shipments";
+import { site } from "@/lib/site";
 import { ErrorState, LoadingState } from "@/components/admin/ui";
 import { useAsyncData } from "@/lib/use-async-data";
 
-// TODO(backend): pola barcode masih statis; gunakan barcode/resi valid dari GET /admin/shipments/:id.
-const BARCODE_PATTERN =
-  "1101001011010010110100110100101101001011011010010110100101101101001011010010110110100101101001011011010010110100101101001011010010110100101101001011010010110100101101";
+// Barcode sederhana dari nomor resi asli; bukan standar Code128, cukup untuk
+// pratinjau cetak sampai backend mengirim gambar barcode resmi.
+function barcodeBits(value: string): string {
+  if (!value) return "";
+  return [...value]
+    .map((character) => character.charCodeAt(0).toString(2).padStart(8, "0"))
+    .join("");
+}
 
-function Barcode() {
+function Barcode({ value }: { value: string }) {
+  const pattern = barcodeBits(value);
+  if (!pattern) return null;
   return (
     <svg
-      viewBox={`0 0 ${BARCODE_PATTERN.length} 48`}
+      viewBox={`0 0 ${pattern.length} 48`}
       preserveAspectRatio="none"
       className="h-14 w-full text-slate-900"
-      aria-label="Barcode nomor resi"
+      aria-label={`Barcode nomor resi ${value}`}
       role="img"
     >
-      {[...BARCODE_PATTERN].map((bit, index) =>
+      {[...pattern].map((bit, index) =>
         bit === "1" ? (
           <rect key={index} x={index} y="0" width="1" height="48" fill="currentColor" />
         ) : null,
@@ -129,18 +137,13 @@ export default function PratinjauLabelPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black leading-none text-[#e30613]">J&amp;T</span>
-                <span className="text-lg font-black leading-none tracking-tight text-slate-900">EXPRESS</span>
+                <span className="text-2xl font-black leading-none text-slate-900">
+                  {data.courier}
+                </span>
               </div>
               <div className="mt-1.5 inline-block bg-slate-900 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                EZ (REGULER)
+                {data.service}
               </div>
-            </div>
-            <div className="text-right">
-              <p className="text-[8px] font-semibold uppercase tracking-widest text-slate-500">
-                Kode Sortir Wilayah
-              </p>
-              <p className="text-xl font-black tracking-tight text-slate-900">JKT-KB05</p>
             </div>
           </div>
 
@@ -149,7 +152,7 @@ export default function PratinjauLabelPage() {
               Nomor Resi Pengiriman
             </p>
             <div className="mt-1 border border-slate-900 p-2">
-              <Barcode />
+              <Barcode value={data.trackingNumber} />
             </div>
             <p className="mt-1.5 text-center font-mono text-base font-bold tracking-[0.25em] text-slate-900">
               {data.trackingNumber}
@@ -162,34 +165,25 @@ export default function PratinjauLabelPage() {
                 Kepada (Penerima)
               </p>
               <p className="mt-1 text-xs font-bold text-slate-900">{data.recipient}</p>
-              <p className="text-slate-700">0812-3456-7890</p>
+              <p className="text-slate-700">{data.phone}</p>
               <p className="mt-1 text-slate-700">{recipientAddress}</p>
-              <div className="mt-1.5 inline-block bg-slate-200 px-1.5 py-0.5 text-[9px] font-semibold text-slate-700">
-                KODE POS: 12150
-              </div>
             </div>
             <div>
               <p className="text-[8px] font-semibold uppercase tracking-widest text-slate-500">
                 Dari (Pengirim)
               </p>
-              <p className="mt-1 text-xs font-bold text-slate-900">Schooly Shop</p>
-              <p className="text-slate-600">(Admin / Gudang Kampus)</p>
-              <p className="text-slate-700">Telp: 0821-9876-5432</p>
-              <p className="mt-1 text-slate-700">
-                Kampus Schooly Shop, Jl. Pembina No. 12, Jakarta Barat
-              </p>
+              <p className="mt-1 text-xs font-bold text-slate-900">{site.name}</p>
+              <p className="text-slate-600">(Admin / Koperasi Sekolah)</p>
+              <p className="text-slate-700">Telp: {site.whatsapp.display}</p>
+              <p className="mt-1 text-slate-700">{site.address}</p>
               <p className="mt-1 text-[9px] italic text-slate-500">Verified Campus Store</p>
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-3 gap-3 border-t border-dashed border-slate-300 pt-3 text-[10px]">
+          <div className="mt-3 grid grid-cols-2 gap-3 border-t border-dashed border-slate-300 pt-3 text-[10px]">
             <div>
               <p className="text-[8px] font-semibold uppercase tracking-wide text-slate-500">No. Pesanan</p>
               <p className="font-mono font-bold text-slate-900">#{data.orderId}</p>
-            </div>
-            <div>
-              <p className="text-[8px] font-semibold uppercase tracking-wide text-slate-500">Berat Paket</p>
-              <p className="font-semibold text-slate-900">0.35 kg (350 gr)</p>
             </div>
             <div>
               <p className="text-[8px] font-semibold uppercase tracking-wide text-slate-500">Kuantitas</p>
@@ -201,24 +195,20 @@ export default function PratinjauLabelPage() {
             <div>
               <p className="text-[8px] font-semibold uppercase tracking-wide text-slate-500">Isi Paket:</p>
               <p className="text-xs font-bold text-slate-900">{data.product}</p>
-              <p className="text-[9px] text-slate-500">Seragam Sekolah / Atasan Katun Premium</p>
             </div>
             <div>
               <p className="text-[8px] font-semibold uppercase tracking-wide text-slate-500">
-                Tipe Pembayaran
+                Nilai Paket
               </p>
-              <span className="mt-1 inline-block bg-slate-900 px-1.5 py-0.5 text-[9px] font-bold text-white">
-                NON-COD (LUNAS)
-              </span>
               <p className="mt-1 text-[10px] text-slate-700">
-                Nilai: <span className="font-bold text-slate-900">{data.total}</span>
+                <span className="font-bold text-slate-900">{data.total}</span>
               </p>
             </div>
           </div>
 
           <div className="mt-auto flex items-center justify-between gap-2 border-t border-slate-300 pt-1.5 text-[7px] text-slate-500">
             <span>Biteship Partner Engine v4.2</span>
-            <span>Waktu Cetak: 24/10/2023 14:32 WIB</span>
+            <span>Waktu Cetak: {new Date().toLocaleString("id-ID")}</span>
             <span>Sheet 1 of 1</span>
           </div>
         </div>
