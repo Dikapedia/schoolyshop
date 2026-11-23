@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { CheckIcon, ImageIcon, PlusIcon } from "@/components/icons";
+import { CheckIcon, PlusIcon } from "@/components/icons";
+import ProductImage from "./ProductImage";
 import { formatRupiah } from "@/lib/format";
 import { addToCustomerCartBySlug } from "@/api/customer/cart";
 import { useSession } from "@/api/auth";
@@ -70,19 +70,11 @@ export default function ProductCard({ product }: { product: Product }) {
   return (
     <article className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:border-slate-300 hover:shadow-md">
       <Link href={href} className="relative block aspect-[4/3] bg-[linear-gradient(135deg,#f1f5f9,#e2e8f0)]">
-        {product.image ? (
-          <Image
-            src={product.image}
-            alt={product.name}
-            fill
-            sizes="(min-width: 1024px) 211px, (min-width: 640px) 33vw, 50vw"
-            className="object-cover"
-          />
-        ) : (
-          <span className="grid h-full place-items-center text-slate-300">
-            <ImageIcon width={32} height={32} />
-          </span>
-        )}
+        <ProductImage
+          src={product.image}
+          alt={product.name}
+          sizes="(min-width: 1024px) 211px, (min-width: 640px) 33vw, 50vw"
+        />
         <span className="absolute left-2 top-2 rounded-md bg-white/95 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 shadow-sm">
           {product.tag}
         </span>

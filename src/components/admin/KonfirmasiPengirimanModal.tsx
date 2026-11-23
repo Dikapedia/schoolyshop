@@ -1,6 +1,7 @@
 "use client";
 
 import { InfoIcon, TruckIcon } from "@/components/icons";
+import { site } from "@/lib/site";
 import type { AdminShipment, ShippingRateView } from "@/api/admin/shipments";
 import type { AdminOrderDetail } from "@/api/admin/order-details";
 import { formatAdminRupiah } from "@/api/admin/shared";
@@ -29,9 +30,8 @@ function ClockIcon({ className }: { className?: string }) {
   );
 }
 
-export default function KonfirmasiPengirimanModal({
-  shipment,
-  address = "Jl. Pendidikan No. 45, RT 03/RW 05, Kebayoran Baru, Jakarta Selatan, 12150",
+export default function KonfirmasiPengirimanModal({ shipment,
+  address: addressProp = undefined,
   quantity = 1,
   orderDetail,
   shippingRates,
@@ -43,6 +43,8 @@ export default function KonfirmasiPengirimanModal({
   onClose,
   onConfirm,
 }: KonfirmasiPengirimanModalProps) {
+  // Ambil alamat dari orderDetail (buyer.address) jika ada, else site config
+  const address = addressProp ?? site.address ?? "-";
   return (
     <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
       <div

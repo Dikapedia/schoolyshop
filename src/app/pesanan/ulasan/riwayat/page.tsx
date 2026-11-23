@@ -1,24 +1,21 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { inter } from "@/lib/fonts";
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 import { useSession } from "@/api/auth";
 import { useHydrated } from "@/lib/use-hydrated";
+import { useAsyncData } from "@/lib/use-async-data";
 import { listReviews } from "@/api/reviews";
 
 export default function UlasanRiwayatPage() {
   const router = useRouter();
   const session = useSession();
   const hydrated = useHydrated();
-  const data = useMemo(
-    () => (session ? listReviews(session.id) : null),
-    [session],
-  );
+  const { data, loading, error } = useAsyncData("reviews:me", listReviews);
   const reviews = data ?? [];
-  const error = session && data === null ? "Gagal memuat ulasan." : "";
 
   useEffect(() => {
     if (hydrated && !session) {
@@ -27,7 +24,6 @@ export default function UlasanRiwayatPage() {
   }, [session, router, hydrated]);
 
   if (!session) return null;
-  if (error) return <div className="flex min-h-screen items-center justify-center text-slate-500">{error}</div>;
 
   return (
     <div className={`${inter.className} flex min-h-screen flex-col bg-slate-50 text-slate-900`}>
@@ -35,18 +31,24 @@ export default function UlasanRiwayatPage() {
       <main className="flex-1">
         <div className="mx-auto max-w-4xl px-4 py-6">
           <h1 className="mb-4 text-2xl font-bold">Riwayat Ulasan</h1>
-          {reviews.length === 0 ? (
+          {loading ? (
+            <p className="text-slate-600">Memuat…</p>
+          ) : error ? (
+            <p className="text-sm text-red-600">{error}</p>
+          ) : reviews.length === 0 ? (
             <p className="text-slate-600">Belum ada ulasan yang dikirim.</p>
           ) : (
             <ul className="space-y-4">
-              {reviews.map((r, idx) => (
-                <li key={idx} className="rounded-xl border border-slate-200 bg-white p-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="font-semibold">{r.productName}</p>
-                    <p className="text-sm text-yellow-500">{"★".repeat(r.rating)}</p>
+              {reviews.map((review, index) => (
+                <li key={`${review.orderId}-${review.productId}-${index}`} className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="mb-1 flex items-center justify-between">
+                    <p className="font-semibold">{review.productName}</p>
+                    <p className="text-sm text-yellow-500">{"★".repeat(review.rating)}</p>
                   </div>
-                  {r.comment && <p className="text-sm text-slate-600 mt-1">{r.comment}</p>}
-                  <p className="text-xs text-slate-400 mt-2">Order: {r.orderId} • {new Date(r.submittedAt).toLocaleString()}</p>
+                  {review.comment && <p className="mt-1 text-sm text-slate-600">{review.comment}</p>}
+                  <p className="mt-2 text-xs text-slate-400">
+                    Order: {review.orderId} • {new Date(review.submittedAt).toLocaleString("id-ID")}
+                  </p>
                 </li>
               ))}
             </ul>

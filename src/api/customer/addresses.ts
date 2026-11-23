@@ -35,7 +35,24 @@ export function createCustomerAddress(
   });
 }
 
-type ShippingArea = {
+/** PATCH /users/me/addresses/{id} */
+export function updateCustomerAddress(
+  id: number,
+  input: Partial<CustomerAddressInput>,
+): Promise<CustomerAddress> {
+  return request(`/users/me/addresses/${id}`, {
+    method: "PATCH",
+    body: input,
+    responseSchema: addressSchema,
+  });
+}
+
+/** DELETE /users/me/addresses/{id} */
+export async function deleteCustomerAddress(id: number): Promise<void> {
+  await request<void>(`/users/me/addresses/${id}`, { method: "DELETE" });
+}
+
+export type ShippingArea = {
   id: string;
   name: string;
   province: string | null;
@@ -49,7 +66,9 @@ type ShippingArea = {
  * aktif backend mengembalikan array kosong, sehingga pemanggil memakai area
  * fallback.
  */
-async function findShippingArea(query: string): Promise<ShippingArea | null> {
+export async function findShippingArea(
+  query: string,
+): Promise<ShippingArea | null> {
   const payload = await request<{ data: ShippingArea[] }>(
     `/shipping/areas?q=${encodeURIComponent(query)}`,
   ).catch(() => ({ data: [] }));

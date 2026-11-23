@@ -6,14 +6,15 @@ import {
 } from "./errors";
 
 /**
- * Konfigurasi tunggal untuk peralihan mock → API nyata.
+ * Konfigurasi API backend.
  *
- * - `NEXT_PUBLIC_USE_MOCK_AUTH=true` (default) memakai akun demo lokal.
- * - Data domain lain berasal dari adapter di `src/api/mocks` sampai endpoint
- *   backend tersedia.
+ * - `NEXT_PUBLIC_API_URL` menunjuk backend Schooly Shop; default dev
+ *   `http://localhost:3000`.
+ * - `NEXT_PUBLIC_USE_MOCK_AUTH=true` memakai akun demo lokal (default: backend asli).
  */
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
-export const USE_MOCK_AUTH = process.env.NEXT_PUBLIC_USE_MOCK_AUTH !== "false";
+export const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+export const USE_MOCK_AUTH = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === "true";
 
 export type RequestOptions<T> = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -51,16 +52,18 @@ export async function request<T>(
     baseUrl = API_URL,
   } = options;
 
+  const isFormData = body instanceof FormData;
+
   let response: Response;
   try {
     response = await fetch(`${baseUrl}${path}`, {
       method,
       headers: {
-        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+        ...(isFormData ? {} : { "Content-Type": "application/json" }),
         ...headers,
       },
       credentials: "include",
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body),
     });
   } catch {
     throw new ApiError(

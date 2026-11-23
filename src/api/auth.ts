@@ -1,4 +1,4 @@
-import { useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { z } from "zod";
 import { request, USE_MOCK_AUTH } from "./client";
 import { ApiError } from "./errors";
@@ -411,8 +411,8 @@ export function clearSession(): void {
 /**
  * Sesi login saat ini, atau null (juga null saat render di server).
  *
- * TODO(backend): bila backend memakai cookie httpOnly, ganti hook ini
- * dengan pemanggilan GET /auth/me.
+ * Sesi disimpan di localStorage/sessionStorage agar UI langsung tahu status
+ * login. `useSessionSync` memvalidasi ulang ke backend sekali per muat halaman.
  */
 export function useSession(): Session | null {
   const raw = useSyncExternalStore(
@@ -439,4 +439,26 @@ function subscribeSession(onChange: () => void): () => void {
     window.removeEventListener("storage", onChange);
     window.removeEventListener(SESSION_EVENT, onChange);
   };
+}
+
+let sessionSynced = false;
+
+/**
+ * Sinkronkan sesi lokal dengan cookie backend sekali per muat halaman.
+ * Sesi dicabut (mis. logout di perangkat lain atau cookie kedaluwarsa)
+ * otomatis dibersihkan; sebaliknya cookie yang masih valid memulihkan sesi
+ * di tab/browser baru.
+ */
+export function useSessionSync(): void {
+  useEffect(() => {
+    if (USE_MOCK_AUTH || sessionSynced || typeof window === "undefined") return;
+    sessionSynced = true;
+
+    request<Session>("/auth/me", { responseSchema: sessionSchema })
+      .then((profile) => {
+        const remember = window.localStorage.getItem(SESSION_KEY) !== null;
+        saveSession(profile, remember);
+      })
+      .catch(() => clearSession());
+  }, []);
 }

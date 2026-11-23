@@ -522,7 +522,6 @@ export default function PenjualSupplierPage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-slate-900">Status Kemitraan Aktif</p>
-                    <p className="text-xs text-slate-600">Terdaftar sejak 14 Januari 2024</p>
                   </div>
                 </div>
                 <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">Terverifikasi</span>

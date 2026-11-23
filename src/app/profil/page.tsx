@@ -9,7 +9,7 @@ import {
   useSession,
 } from "@/api/auth";
 import { getApiErrorMessage } from "@/api/errors";
-import { getProfilePhone, saveProfilePhone } from "@/api/users";
+import { getProfile, updateProfile } from "@/api/users";
 
 import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
@@ -24,10 +24,8 @@ export default function ProfilPage() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState<string[]>(() => {
-    if (typeof window === "undefined") return [];
-    return getProfilePhone().replace(/\D/g, "").split("");
-  });
+  const [phone, setPhone] = useState("");
+  const [registeredAt, setRegisteredAt] = useState("");
   const [passwordLama, setPasswordLama] = useState("");
   const [passwordBaru, setPasswordBaru] = useState("");
   const [konfirmasiPassword, setKonfirmasiPassword] = useState("");
@@ -41,6 +39,16 @@ export default function ProfilPage() {
     initializedRef.current = true;
     setName(session.name);
     setEmail(session.email);
+    void getProfile().then((profile) => {
+      setName(profile.name);
+      setEmail(profile.email);
+      setPhone(profile.phone ?? "");
+      setRegisteredAt(
+        new Date(profile.createdAt).toLocaleDateString("id-ID", {
+          dateStyle: "long",
+        }),
+      );
+    }).catch(() => undefined);
   }, [session]);
 
   useEffect(() => {
@@ -49,14 +57,7 @@ export default function ProfilPage() {
     saveSession(updated, true);
   }, [name, email]);
 
-  // Simpan nomor HP saat berubah
-  useEffect(() => {
-    if (phone.length > 0) {
-      saveProfilePhone(phone);
-    }
-  }, [phone]);
-
-  const displayPhone = phone.length ? "+62" + phone.join("") : "";
+  const displayPhone = phone;
 
   if (!session) {
     return (
@@ -94,7 +95,7 @@ export default function ProfilPage() {
       return;
     }
 
-    if (phone.length < 10) {
+    if (phone.replace(/\D/g, "").length < 10) {
       setError("Nomor HP minimal 10 digit");
       setLoading(false);
       return;
@@ -117,36 +118,29 @@ export default function ProfilPage() {
       return;
     }
 
-    setTimeout(() => {
-      if (session) {
-        const updated = {
-          ...session,
-          name: name.trim(),
-          email: email.trim(),
-        };
-        saveSession(updated, true);
-      }
-
+    try {
+      const updated = await updateProfile({
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+      });
+      saveSession(updated, true);
       if (passwordBaru) {
-        try {
-          changePassword({
-            userId: session?.id ?? "",
-            currentPassword: passwordLama,
-            newPassword: passwordBaru,
-          });
-        } catch (err) {
-          setError(getApiErrorMessage(err));
-          setLoading(false);
-          return;
-        }
+        await changePassword({
+          userId: updated.id,
+          currentPassword: passwordLama,
+          newPassword: passwordBaru,
+        });
       }
-
       setSuccess("Profil berhasil diperbarui.");
       setPasswordLama("");
       setPasswordBaru("");
       setKonfirmasiPassword("");
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   }
 
   return (
@@ -333,8 +327,8 @@ export default function ProfilPage() {
                           // Strip "62" prefix if present, keep only what user typed
                           const userDigits = digits.startsWith("62") ? digits.slice(2) : digits;
                           // Limit to 10 digits
-                          const next = userDigits.slice(0, 10);
-                          setPhone(next.split(""));
+                          const next = userDigits.slice(0, 13);
+                          setPhone(next);
                         }}
                         className="w-full rounded-lg border border-slate-300 bg-slate-50 pl-9 pr-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                         maxLength={13}
@@ -350,10 +344,9 @@ export default function ProfilPage() {
                           <svg className="absolute left-3 top-3 h-4 w-4 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
-                          {/* TODO(backend): tanggal daftar dan tahun ajaran masih statis; ambil dari GET /users/me. */}
                           <input
                             type="text"
-                            value="12 Juli 2026 (Tahun Ajaran Baru)"
+                            value={registeredAt || "Memuat…"}
                             disabled
                             className="w-full rounded-lg border border-slate-300 bg-slate-50 pl-9 pr-3 py-2 text-sm text-slate-500 cursor-not-allowed"
                           />

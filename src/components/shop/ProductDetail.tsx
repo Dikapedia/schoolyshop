@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckIcon, ImageIcon } from "@/components/icons";
+import { CheckIcon } from "@/components/icons";
+import ProductImage from "./ProductImage";
 import { cx } from "@/lib/cx";
 import { inter } from "@/lib/fonts";
 import { formatRupiah } from "@/lib/format";
@@ -182,20 +182,13 @@ export default function ProductDetail({
             <div className="grid gap-0 lg:grid-cols-[1.05fr_1fr]">
               <div className="border-b border-slate-200 p-3 sm:p-4 lg:border-b-0 lg:border-r">
                 <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-[linear-gradient(135deg,#f1f5f9,#e2e8f0)]">
-                  {gallery[activeThumb] ? (
-                    <Image
-                      src={gallery[activeThumb]}
-                      alt={product.name}
-                      fill
-                      sizes="(min-width:1024px) 560px, 100vw"
-                      className="object-cover"
-                      priority
-                    />
-                  ) : (
-                    <span className="grid h-full place-items-center text-slate-400">
-                      <ImageIcon width={40} height={40} />
-                    </span>
-                  )}
+                  <ProductImage
+                    src={gallery[activeThumb] ?? null}
+                    alt={product.name}
+                    sizes="(min-width:1024px) 560px, 100vw"
+                    priority
+                    iconSize={40}
+                  />
                   <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow">
                     <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-white" />
                     {product.tag}
@@ -217,7 +210,7 @@ export default function ProductDetail({
                             : "border-slate-200 hover:border-slate-300",
                         )}
                       >
-                        <Image src={src} alt="" fill className="object-cover opacity-90" sizes="140px" />
+                        <ProductImage src={src} alt="" sizes="140px" />
                       </button>
                     ))}
                   </div>
@@ -260,7 +253,7 @@ export default function ProductDetail({
                       <span className="text-amber-500">★</span>
                       {averageRating.toFixed(1)}
                       <span className="font-normal text-slate-500">
-                        ({reviewCount} Ulasan Warga Sekolah)
+                        ({reviewCount} ulasan Anda)
                       </span>
                     </a>
                   )}
@@ -454,7 +447,7 @@ export default function ProductDetail({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="inline-flex items-center gap-2 text-sm font-bold text-slate-900">
                 <span aria-hidden className="h-2 w-2 rounded-full bg-blue-600" />
-                Ulasan Pembeli
+                Ulasan Anda
               </h2>
               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
                 {reviewCount} ulasan
@@ -463,7 +456,7 @@ export default function ProductDetail({
 
             {reviewCount === 0 ? (
               <p className="mt-4 text-sm text-slate-500">
-                Belum ada ulasan untuk produk ini. Selesaikan pesanan lalu
+                Belum ada ulasan Anda untuk produk ini. Selesaikan pesanan lalu
                 bagikan pengalaman Anda.
               </p>
             ) : (
@@ -480,7 +473,7 @@ export default function ProductDetail({
                         </span>
                         <div>
                           <p className="text-xs font-semibold text-slate-900">
-                            Pembeli Terverifikasi
+                            Ulasan Anda
                           </p>
                           <p className="text-[11px] text-slate-400">
                             {new Date(review.submittedAt).toLocaleDateString(
@@ -541,11 +534,7 @@ export default function ProductDetail({
                     className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 transition hover:border-blue-200 hover:shadow-sm"
                   >
                     <span className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-lg bg-[linear-gradient(135deg,#f1f5f9,#e2e8f0)]">
-                      {p.image ? (
-                        <Image src={p.image} alt="" fill sizes="56px" className="object-cover" />
-                      ) : (
-                        <ImageIcon width={18} height={18} className="text-slate-300" />
-                      )}
+                      <ProductImage src={p.image} alt="" sizes="56px" iconSize={18} />
                     </span>
                     <span className="min-w-0">
                       <span className="block truncate text-xs font-semibold leading-tight text-slate-900 group-hover:text-blue-600">

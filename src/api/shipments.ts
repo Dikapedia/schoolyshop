@@ -1,4 +1,25 @@
-import { TRACKING_MOCK } from "./mocks/shipments";
+import { z } from "zod";
+import { request } from "./client";
+
+const trackingRowSchema = z.object({
+  orderId: z.number(),
+  orderStatus: z.string(),
+  courier: z.string(),
+  service: z.string(),
+  trackingNumber: z.string(),
+  status: z.string(),
+  recipientName: z.string(),
+  shippingAddress: z.string(),
+  history: z.array(
+    z.object({
+      id: z.number(),
+      status: z.string(),
+      location: z.string(),
+      description: z.string(),
+      occurredAt: z.string(),
+    }),
+  ),
+});
 
 export type TrackingHistory = {
   timestamp: string;
@@ -14,16 +35,26 @@ export type Tracking = {
   history: TrackingHistory[];
 };
 
-/**
- * Lacak pengiriman berdasarkan nomor resi atau ID pesanan.
- *
- * TODO(backend): ganti dengan GET /shipments/track?q=...; konfirmasi juga
- * format timestamp, status kurir, dan apakah respons bisa berisi banyak
- * paket per pesanan.
- */
-export function trackShipment(query: string): Tracking {
+/** GET /shipments/track?q= */
+export async function trackShipment(query: string): Promise<Tracking> {
+  const row = await request(
+    `/shipments/track?q=${encodeURIComponent(query)}`,
+    {
+      responseSchema: trackingRowSchema,
+      statusMessages: { 404: "Pengiriman tidak ditemukan." },
+    },
+  );
+
   return {
-    order_id: query,
-    ...TRACKING_MOCK,
+    order_id: String(row.orderId),
+    trackingNumber: row.trackingNumber,
+    courier: [row.courier, row.service].filter(Boolean).join(" • "),
+    status: row.status,
+    // Backend mengirim event terbaru lebih dulu; UI menampilkan dari lama.
+    history: [...row.history].reverse().map((event) => ({
+      timestamp: new Date(event.occurredAt).toLocaleString("id-ID"),
+      location: event.location || event.status,
+      description: event.description,
+    })),
   };
 }

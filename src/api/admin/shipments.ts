@@ -25,6 +25,7 @@ export type AdminShipmentDetail = {
   orderId?: string;
   customer: string;
   recipient: string;
+  phone: string;
   product: string;
   quantity: number;
   total: string;
@@ -137,6 +138,7 @@ export function mapShipmentDetail(
     orderId: String(row.orderId),
     customer: row.customerName,
     recipient: row.recipientName,
+    phone: row.phone || "-",
     product: row.items?.[0]?.productName ?? row.productName ?? "-",
     quantity: row.itemCount ?? row.items?.reduce((sum, item) => sum + item.qty, 0) ?? 0,
     total: formatAdminRupiah(row.total),

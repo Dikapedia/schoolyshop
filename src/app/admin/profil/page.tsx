@@ -2,8 +2,10 @@
 
 import React, { useState, useRef, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "@/api/auth";
+import { changePassword, useSession } from "@/api/auth";
 import { saveSession, clearSession } from "@/api/auth";
+import { getProfile, updateProfile } from "@/api/users";
+import { getApiErrorMessage } from "@/api/errors";
 import { site } from "@/lib/site";
 
 const noopSubscribe = () => () => {};
@@ -30,8 +32,8 @@ export default function AdminProfilPage() {
   const [konfirmasiPassword, setKonfirmasiPassword] = useState("");
   // TODO(backend): data sekolah masih statis dan perlu endpoint PATCH /admin/settings.
   const [schoolName, setSchoolName] = useState<string>(site.school);
-  const [schoolAddress, setSchoolAddress] = useState<string>("Jl. Pendidikan No. 1, Jakarta");
-  const [schoolPhone, setSchoolPhone] = useState<string>("+62 21 1234 5678");
+  const [schoolAddress, setSchoolAddress] = useState<string>(site.address);
+  const [schoolPhone, setSchoolPhone] = useState<string>(site.whatsapp.display);
   const [notifiPesanan, setNotifiPesanan] = useState(true);
   const [notifiStok, setNotifiStok] = useState(true);
   const [notifiPengembalian, setNotifiPengembalian] = useState(true);
@@ -46,6 +48,14 @@ export default function AdminProfilPage() {
     initializedRef.current = true;
     setName(session.name);
     setEmail(session.email);
+    void getProfile()
+      .then((profile) => {
+        setName(profile.name);
+        setEmail(profile.email);
+        // Input WhatsApp memakai awalan +62, jadi simpan bagian lokalnya saja.
+        setWhatsapp((profile.phone ?? "").replace(/^\+?62/, "").replace(/^0/, ""));
+      })
+      .catch(() => undefined);
   }, [session]);
 
   if (!mounted || !session) return null;
@@ -68,18 +78,25 @@ export default function AdminProfilPage() {
       return;
     }
 
-    setTimeout(() => {
+    try {
+      const digits = whatsapp.replace(/\D/g, "");
+      const updated = await updateProfile({
+        name: name.trim(),
+        email: email.trim(),
+        phone: digits ? `+62${digits}` : undefined,
+      });
       if (sessionRef.current) {
-        const updated = {
-          ...sessionRef.current,
-          name: name.trim(),
-          email: email.trim(),
-        };
-        saveSession(updated, true);
+        saveSession(
+          { ...sessionRef.current, name: updated.name, email: updated.email },
+          true,
+        );
       }
       setSuccess("Data akun berhasil diperbarui");
+    } catch (cause: unknown) {
+      setError(getApiErrorMessage(cause, "Gagal memperbarui data akun."));
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   const handleSaveKeamanan = async (e: React.FormEvent) => {
@@ -94,8 +111,8 @@ export default function AdminProfilPage() {
       return;
     }
 
-    if (!passwordBaru.trim() || passwordBaru.length < 6) {
-      setError("Kata sandi baru minimal 6 karakter");
+    if (!passwordBaru.trim() || passwordBaru.length < 8) {
+      setError("Kata sandi baru minimal 8 karakter");
       setLoading(false);
       return;
     }
@@ -106,15 +123,25 @@ export default function AdminProfilPage() {
       return;
     }
 
-    setTimeout(() => {
+    try {
+      if (!sessionRef.current) return;
+      await changePassword({
+        userId: sessionRef.current.id,
+        currentPassword: passwordLama,
+        newPassword: passwordBaru,
+      });
       setSuccess("Kata sandi berhasil diubah");
       setPasswordLama("");
       setPasswordBaru("");
       setKonfirmasiPassword("");
+    } catch (cause: unknown) {
+      setError(getApiErrorMessage(cause, "Gagal mengubah kata sandi."));
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
+  // TODO(backend): belum ada endpoint preferensi notifikasi; hanya di memori.
   const handleSaveNotifikasi = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -127,6 +154,7 @@ export default function AdminProfilPage() {
     }, 500);
   };
 
+  // TODO(backend): belum ada endpoint pengaturan sekolah; nilai dari site config.
   const handleSaveToko = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);

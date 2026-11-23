@@ -1,17 +1,19 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSession } from "@/api/auth";
 import {
-  getDemoAddress,
-  listAddresses,
-  removeAddress,
-  saveAddresses,
-  setPrimaryAddress,
-  type Address,
-} from "@/api/addresses";
-import { useRouter } from "next/navigation";
+  createCustomerAddress,
+  deleteCustomerAddress,
+  findShippingArea,
+  listCustomerAddresses,
+  updateCustomerAddress,
+  type CustomerAddressInput,
+} from "@/api/customer/addresses";
+import type { CustomerAddress } from "@/api/customer/schemas";
+import { getApiErrorMessage } from "@/api/errors";
 import { inter } from "@/lib/fonts";
 import { site } from "@/lib/site";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -19,12 +21,18 @@ import SiteHeader from "@/components/shop/SiteHeader";
 import SiteFooter from "@/components/shop/SiteFooter";
 
 const emptyForm = {
-  name: "",
+  label: "",
+  recipientName: "",
   phone: "",
   address: "",
+  district: "",
+  city: "",
+  province: "",
   postalCode: "",
   note: "",
 };
+
+type FormState = typeof emptyForm;
 
 export default function AlamatPengirimanPage() {
   const session = useSession();
@@ -39,26 +47,41 @@ export default function AlamatPengirimanPage() {
 
   if (!session) return null;
 
-  return <AddressBook key={session.id} userId={session.id} />;
+  return <AddressBook />;
 }
 
-function AddressBook({ userId }: { userId: string }) {
-  const [addresses, setAddresses] = useState<Address[]>(() => {
-    const stored = listAddresses(userId);
-    return stored.length > 0
-      ? stored
-      : [getDemoAddress(`address-demo-${Date.now()}`)];
-  });
-
-  // Persist addresses per‑user
-  useEffect(() => {
-    saveAddresses(userId, addresses);
-  }, [addresses, userId]);
-
+function AddressBook() {
+  const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState(emptyForm);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState<FormState>(emptyForm);
   const [formError, setFormError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    listCustomerAddresses()
+      .then((data) => {
+        if (!cancelled) setAddresses(data);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setLoadError(getApiErrorMessage(err, "Gagal memuat alamat."));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function reload(): Promise<void> {
+    setAddresses(await listCustomerAddresses());
+  }
 
   function openAddForm() {
     setEditingId(null);
@@ -67,14 +90,18 @@ function AddressBook({ userId }: { userId: string }) {
     setShowForm(true);
   }
 
-  function openEditForm(address: Address) {
+  function openEditForm(address: CustomerAddress) {
     setEditingId(address.id);
     setForm({
-      name: address.name,
+      label: address.label,
+      recipientName: address.recipientName,
       phone: address.phone,
-      address: address.address,
+      address: address.address ?? "",
+      district: address.district,
+      city: address.city,
+      province: address.province,
       postalCode: address.postalCode,
-      note: address.note,
+      note: address.note ?? "",
     });
     setFormError("");
     setShowForm(true);
@@ -86,50 +113,76 @@ function AddressBook({ userId }: { userId: string }) {
     setFormError("");
   }
 
-  function saveAddress(event: React.FormEvent) {
+  async function buildInput(): Promise<CustomerAddressInput> {
+    const district = form.district.trim();
+    const area = district ? await findShippingArea(district) : null;
+
+    return {
+      label: form.label.trim(),
+      recipientName: form.recipientName.trim(),
+      phone: form.phone.trim(),
+      address: form.address.trim() || undefined,
+      areaId: area?.id ?? district,
+      district,
+      city: form.city.trim() || area?.city || district,
+      province: form.province.trim() || area?.province || "",
+      postalCode: form.postalCode.trim() || area?.postalCode || "",
+      note: form.note.trim() || undefined,
+      isPrimary: editingId === null && addresses.length === 0,
+    };
+  }
+
+  async function saveAddress(event: React.FormEvent) {
     event.preventDefault();
-    if (!form.name.trim() || !form.phone.trim() || !form.address.trim() || !form.postalCode.trim()) {
-      setFormError("Nama, nomor kontak, alamat, dan kode pos wajib diisi.");
+    if (
+      !form.label.trim() ||
+      !form.recipientName.trim() ||
+      !form.phone.trim() ||
+      !form.district.trim() ||
+      !form.city.trim() ||
+      !form.province.trim() ||
+      !form.postalCode.trim()
+    ) {
+      setFormError(
+        "Label, nama penerima, telepon, kecamatan, kota, provinsi, dan kode pos wajib diisi.",
+      );
       return;
     }
 
-    if (editingId) {
-      setAddresses((current) =>
-        current.map((address) =>
-          address.id === editingId
-            ? {
-                ...address,
-                name: form.name.trim(),
-                phone: form.phone.trim(),
-                address: form.address.trim(),
-                postalCode: form.postalCode.trim(),
-                note: form.note.trim(),
-              }
-            : address
-        )
-      );
-    } else {
-      const newAddress: Address = {
-        id: `address-${Date.now()}`,
-        name: form.name.trim(),
-        phone: form.phone.trim(),
-        address: form.address.trim(),
-        postalCode: form.postalCode.trim(),
-        note: form.note.trim(),
-        badges: ["Rumah"],
-        isPrimary: addresses.length === 0,
-      };
-      setAddresses((current) => [...current, newAddress]);
+    setSaving(true);
+    setFormError("");
+    try {
+      const input = await buildInput();
+      if (editingId !== null) {
+        await updateCustomerAddress(editingId, input);
+      } else {
+        await createCustomerAddress(input);
+      }
+      await reload();
+      closeForm();
+    } catch (err) {
+      setFormError(getApiErrorMessage(err, "Gagal menyimpan alamat."));
+    } finally {
+      setSaving(false);
     }
-    closeForm();
   }
 
-  function setPrimary(id: string) {
-    setAddresses((current) => setPrimaryAddress(current, id));
+  async function setPrimary(id: number) {
+    try {
+      await updateCustomerAddress(id, { isPrimary: true });
+      await reload();
+    } catch (err) {
+      setLoadError(getApiErrorMessage(err, "Gagal mengubah alamat utama."));
+    }
   }
 
-  function handleRemoveAddress(id: string) {
-    setAddresses((current) => removeAddress(current, id));
+  async function handleRemoveAddress(id: number) {
+    try {
+      await deleteCustomerAddress(id);
+      await reload();
+    } catch (err) {
+      setLoadError(getApiErrorMessage(err, "Gagal menghapus alamat."));
+    }
   }
 
   return (
@@ -140,9 +193,6 @@ function AddressBook({ userId }: { userId: string }) {
         <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="mb-4 flex items-center gap-2 text-sm">
             <Link href="/" className="flex items-center gap-1 text-slate-500 hover:text-slate-700">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
               Beranda
             </Link>
             <span className="text-slate-400">/</span>
@@ -163,124 +213,96 @@ function AddressBook({ userId }: { userId: string }) {
               onClick={openAddForm}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              Tambah Alamat Baru
+              + Tambah Alamat Baru
             </button>
           </div>
 
-          <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
-            <div className="flex items-center gap-2 text-sm text-blue-800">
-              <svg className="h-5 w-5 shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>
-                <strong>Integrasi Biteship API aktif:</strong> Alamat terverifikasi otomatis hingga tingkat kecamatan dan kode pos kelurahan di Kota Semarang &amp; sekitarnya.
-              </span>
+          {loadError && (
+            <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {loadError}
             </div>
-            <span className="hidden shrink-0 items-center gap-1 text-xs font-medium text-green-600 sm:flex">
-              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              API Online 99.8%
-            </span>
-          </div>
+          )}
 
-          <div className="space-y-2">
-            {addresses.map((address) => (
-              <article key={address.id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-1 flex items-start gap-3">
-                      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-blue-100 text-blue-600">
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        </svg>
+          {loading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 2 }, (_, index) => (
+                <div key={index} className="h-28 animate-pulse rounded-xl border border-slate-200 bg-white" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {addresses.map((address) => (
+                <article key={address.id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex items-start gap-3">
+                        <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-blue-100 text-blue-600">
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h2 className="font-bold text-sm">{address.recipientName}</h2>
+                          <p className="text-xs text-slate-600">{address.phone}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h2 className="font-bold text-sm">{address.name}</h2>
-                        <p className="text-xs text-slate-600">{address.phone}</p>
-                      </div>
-                    </div>
 
-                    <div className="mb-1 flex flex-wrap gap-1.5">
-                      {address.badges.map((badge) => (
-                        <span
-                          key={badge}
-                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                            badge === "Alamat Utama"
-                              ? "bg-green-100 text-green-700"
-                              : badge === "Pick-Up Hub"
-                              ? "bg-blue-100 text-blue-700"
-                              : badge === "Bebas Ongkir Pengiriman"
-                              ? "bg-purple-100 text-purple-700"
-                              : "bg-slate-100 text-slate-600"
-                          }`}
-                        >
-                          {badge === "Alamat Utama" && (
-                            <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                            </svg>
-                          )}
-                          {badge}
+                      <div className="mb-1 flex flex-wrap gap-1.5">
+                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                          {address.label}
                         </span>
-                      ))}
+                        {address.isPrimary && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                            Alamat Utama
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-xs leading-5 text-slate-700">
+                        {address.address ?? "-"}, {address.district}, {address.city}, {address.province}
+                      </p>
+                      <p className="mt-0.5 text-xs font-semibold text-slate-900">Kode Pos: {address.postalCode}</p>
+                      {address.note && <p className="mt-0.5 text-xs text-slate-500">Catatan: {address.note}</p>}
                     </div>
 
-                    <p className="text-xs leading-5 text-slate-700">{address.address}</p>
-                    <p className="mt-0.5 text-xs font-semibold text-slate-900">Kode Pos: {address.postalCode}</p>
-                    {address.note && <p className="mt-0.5 text-xs text-slate-500">Catatan: {address.note}</p>}
-                  </div>
-
-                  <div className="flex shrink-0 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => openEditForm(address)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
-                    >
-                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
-                      Edit
-                    </button>
-                    {address.isPrimary ? (
-                      <span className="inline-flex items-center gap-1 rounded-lg border border-green-200 bg-green-50 px-2.5 py-1.5 text-xs font-medium text-green-700">
-                        <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                        </svg>
-                        Terpilih
-                      </span>
-                    ) : (
+                    <div className="flex shrink-0 gap-2">
                       <button
                         type="button"
-                        onClick={() => setPrimary(address.id)}
+                        onClick={() => openEditForm(address)}
                         className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
                       >
-                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.98 9.11c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                        </svg>
-                        Jadikan Utama
+                        Edit
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveAddress(address.id)}
-                      className="inline-flex items-center justify-center rounded-lg border border-red-200 p-1.5 text-red-500 transition hover:bg-red-50"
-                      title="Hapus alamat"
-                      aria-label={`Hapus alamat ${address.name}`}
-                    >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
+                      {address.isPrimary ? (
+                        <span className="inline-flex items-center gap-1 rounded-lg border border-green-200 bg-green-50 px-2.5 py-1.5 text-xs font-medium text-green-700">
+                          Terpilih
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setPrimary(address.id)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+                        >
+                          Jadikan Utama
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAddress(address.id)}
+                        className="inline-flex items-center justify-center rounded-lg border border-red-200 p-1.5 text-red-500 transition hover:bg-red-50"
+                        title="Hapus alamat"
+                        aria-label={`Hapus alamat ${address.recipientName}`}
+                      >
+                        Hapus
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
-          </div>
+                </article>
+              ))}
+            </div>
+          )}
 
-          {addresses.length === 0 && (
+          {!loading && addresses.length === 0 && (
             <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">
               <p className="text-sm text-slate-600">Belum ada alamat tersimpan.</p>
               <button type="button" onClick={openAddForm} className="mt-3 text-sm font-semibold text-blue-600 hover:text-blue-700">
@@ -288,48 +310,41 @@ function AddressBook({ userId }: { userId: string }) {
               </button>
             </div>
           )}
-
-          <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
-            <div className="flex items-start gap-2">
-              <svg className="h-5 w-5 shrink-0 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <div>
-                <p className="text-sm font-medium text-amber-800">Tips Pengiriman Biteship</p>
-                <p className="mt-1 text-sm text-amber-700">
-                  Saat menambah alamat baru, ketik nama kecamatan (misal: Bandung Wetan, Coblong, Sukajadi) dan sistem akan menampilkan pilihan area
-                  logistik terdaftar secara otomatis beserta tarif instan.
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       </main>
 
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-          <form onSubmit={saveAddress} className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+          <form onSubmit={saveAddress} className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
             <div className="mb-5 flex items-start justify-between">
               <div>
-                <h2 className="text-xl font-bold">{editingId ? "Edit Alamat" : "Tambah Alamat Baru"}</h2>
+                <h2 className="text-xl font-bold">{editingId !== null ? "Edit Alamat" : "Tambah Alamat Baru"}</h2>
                 <p className="mt-1 text-sm text-slate-600">Lengkapi alamat pengiriman atau titik penjemputan paket.</p>
               </div>
               <button type="button" onClick={closeForm} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Tutup form">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                Tutup
               </button>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="address-name" className="mb-1.5 block text-sm font-medium text-slate-700">Nama Penerima / Label</label>
+                <label htmlFor="address-label" className="mb-1.5 block text-sm font-medium text-slate-700">Label Alamat</label>
+                <input
+                  id="address-label"
+                  value={form.label}
+                  onChange={(event) => setForm({ ...form, label: event.target.value })}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="cth: Rumah, Kantor, Koperasi"
+                />
+              </div>
+              <div>
+                <label htmlFor="address-name" className="mb-1.5 block text-sm font-medium text-slate-700">Nama Penerima</label>
                 <input
                   id="address-name"
-                  value={form.name}
-                  onChange={(event) => setForm({ ...form, name: event.target.value })}
+                  value={form.recipientName}
+                  onChange={(event) => setForm({ ...form, recipientName: event.target.value })}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="cth: Rumah, Kantor, Titik Koperasi"
+                  placeholder="Nama lengkap penerima"
                 />
               </div>
               <div>
@@ -339,18 +354,7 @@ function AddressBook({ userId }: { userId: string }) {
                   value={form.phone}
                   onChange={(event) => setForm({ ...form, phone: event.target.value })}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="cth: (+62) 812-3456-7890"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label htmlFor="address-detail" className="mb-1.5 block text-sm font-medium text-slate-700">Alamat Lengkap</label>
-                <textarea
-                  id="address-detail"
-                  value={form.address}
-                  onChange={(event) => setForm({ ...form, address: event.target.value })}
-                  rows={3}
-                  className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="Nama jalan, nomor rumah, RT/RW, kelurahan, kecamatan, kabupaten/kota, provinsi"
+                  placeholder="cth: 08123456789"
                 />
               </div>
               <div>
@@ -363,10 +367,49 @@ function AddressBook({ userId }: { userId: string }) {
                   placeholder="cth: 40115"
                 />
               </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="address-detail" className="mb-1.5 block text-sm font-medium text-slate-700">Alamat Lengkap</label>
+                <textarea
+                  id="address-detail"
+                  value={form.address}
+                  onChange={(event) => setForm({ ...form, address: event.target.value })}
+                  rows={2}
+                  className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="Nama jalan, nomor rumah, RT/RW"
+                />
+              </div>
               <div>
-                <label htmlFor="address-note" className="mb-1.5 block text-sm font-medium text-slate-700">
-                  Catatan
-                </label>
+                <label htmlFor="address-district" className="mb-1.5 block text-sm font-medium text-slate-700">Kecamatan</label>
+                <input
+                  id="address-district"
+                  value={form.district}
+                  onChange={(event) => setForm({ ...form, district: event.target.value })}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="cth: Coblong"
+                />
+              </div>
+              <div>
+                <label htmlFor="address-city" className="mb-1.5 block text-sm font-medium text-slate-700">Kota / Kabupaten</label>
+                <input
+                  id="address-city"
+                  value={form.city}
+                  onChange={(event) => setForm({ ...form, city: event.target.value })}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="cth: Kota Bandung"
+                />
+              </div>
+              <div>
+                <label htmlFor="address-province" className="mb-1.5 block text-sm font-medium text-slate-700">Provinsi</label>
+                <input
+                  id="address-province"
+                  value={form.province}
+                  onChange={(event) => setForm({ ...form, province: event.target.value })}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="cth: Jawa Barat"
+                />
+              </div>
+              <div>
+                <label htmlFor="address-note" className="mb-1.5 block text-sm font-medium text-slate-700">Catatan</label>
                 <input
                   id="address-note"
                   value={form.note}
@@ -383,8 +426,8 @@ function AddressBook({ userId }: { userId: string }) {
               <button type="button" onClick={closeForm} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                 Batal
               </button>
-              <button type="submit" className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-                {editingId ? "Simpan Perubahan" : "Simpan Alamat"}
+              <button type="submit" disabled={saving} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
+                {saving ? "Menyimpan..." : editingId !== null ? "Simpan Perubahan" : "Simpan Alamat"}
               </button>
             </div>
           </form>

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { clearSession, useSession } from "@/api/auth";
+import { clearSession, useSession, useSessionSync } from "@/api/auth";
 import { getAdminDashboardSummary } from "@/api/admin/dashboard";
 import {
   BarChartIcon,
@@ -139,6 +139,7 @@ function ShellFallback({ message }: { message: string }) {
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const session = useSession();
+  useSessionSync();
   const router = useRouter();
   const pathname = usePathname();
   const hydrated = useSyncExternalStore(

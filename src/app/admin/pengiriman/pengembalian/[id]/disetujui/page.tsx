@@ -14,6 +14,7 @@ import {
 } from "@/components/icons";
 import { getAdminReturnDetail } from "@/api/admin/return-details";
 import { useAsyncData } from "@/lib/use-async-data";
+import { site } from "@/lib/site";
 
 type StepTone = "done" | "active" | "pending";
 
@@ -365,8 +366,8 @@ export default function PengembalianDisetujuiPage() {
                   <p className="text-xs text-slate-500">Alamat Tujuan Gudang</p>
                   <p className="text-sm font-semibold text-slate-900 mt-0.5">Gudang Pusat Schooly Shop</p>
                   <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                    Jl. Pendidikan No. 45, Kebayoran Baru, Jakarta Selatan 12160
-                  </p>
+                      Alamat Gudang: {site.address}
+                    </p>
                 </div>
               </div>
             </div>

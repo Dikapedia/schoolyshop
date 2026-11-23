@@ -9,6 +9,7 @@ import {
 } from "@/api/admin/shipments";
 import { ErrorState, LoadingState } from "@/components/admin/ui";
 import { useAsyncData } from "@/lib/use-async-data";
+import { site } from "@/lib/site";
 
 type StepState = "done" | "active" | "pending";
 
@@ -157,22 +158,19 @@ export default function PelacakanPengirimanPage() {
           </div>
           <div>
             <p className="text-xs text-slate-500 mb-1">Kurir &amp; Layanan</p>
-            <p className="text-sm text-slate-700">J&amp;T Express (Regular)</p>
+            <p className="text-sm text-slate-700">{detail.courier} ({detail.service})</p>
           </div>
           <div>
             <p className="text-xs text-slate-500 mb-1">Nomor Resi</p>
             <p className="text-sm font-mono font-semibold text-blue-600">{detail.trackingNumber}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-500 mb-1">Kota Asal</p>
-            <p className="text-sm text-slate-700">Semarang, Jawa Tengah</p>
+            <p className="text-xs text-slate-500 mb-1">Asal Pengiriman</p>
+            <p className="text-sm text-slate-700">{site.address}</p>
           </div>
           <div className="col-span-2">
-            <p className="text-xs text-slate-500 mb-1">Kota Tujuan</p>
-            <p className="text-sm text-slate-700">
-              Jakarta Selatan, DKI Jakarta{" "}
-              <span className="text-slate-500">(Jl. Pendidikan No. 45, Kebayoran Baru)</span>
-            </p>
+            <p className="text-xs text-slate-500 mb-1">Alamat Tujuan</p>
+            <p className="text-sm text-slate-700">{detail.address}</p>
           </div>
         </div>
       </section>
